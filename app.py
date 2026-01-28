@@ -12,6 +12,7 @@ from databricks_client import (
     get_mock_recommendations,
     get_databricks_client
 )
+from coursera_client import get_courses_for_interests
 
 # Page configuration
 st.set_page_config(
@@ -69,6 +70,9 @@ def apply_global_styles():
             margin-bottom: 2rem;
             color: {COLORS['white']};
         }}
+        .main-header h1 {{
+            color: {COLORS['white']} !important;
+        }}
 
         /* Card styling */
         .course-card {{
@@ -78,14 +82,59 @@ def apply_global_styles():
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             margin-bottom: 1rem;
             border-left: 4px solid {COLORS['primary_dark']};
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }}
+        .course-card:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }}
         .course-card h4 {{
             color: {COLORS['primary_dark']};
             margin-bottom: 0.5rem;
         }}
+        .course-card h4 a {{
+            color: {COLORS['primary_dark']};
+            text-decoration: none;
+        }}
+        .course-card h4 a:hover {{
+            text-decoration: underline;
+        }}
         .course-card p {{
             color: {COLORS['text_dark']};
             margin-bottom: 0.25rem;
+        }}
+        .course-card-link {{
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }}
+        .course-image {{
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 5px;
+            margin-bottom: 0.75rem;
+        }}
+        .course-image-placeholder {{
+            width: 100%;
+            height: 120px;
+            background-color: {COLORS['light_accent']};
+            border-radius: 5px;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: {COLORS['secondary']};
+            font-size: 2rem;
+        }}
+        .provider-tag {{
+            display: inline-block;
+            background-color: {COLORS['light_accent']};
+            color: {COLORS['mid_accent']};
+            padding: 0.2rem 0.5rem;
+            border-radius: 3px;
+            font-size: 0.75rem;
+            margin-bottom: 0.5rem;
         }}
 
         .mentor-card {{
@@ -199,7 +248,7 @@ def render_sidebar():
     with st.sidebar:
         # Show logo if it exists
         if os.path.exists(LOGO_PATH):
-            st.image(LOGO_PATH, use_container_width=True)
+            st.image(LOGO_PATH, use_column_width=True)
         else:
             st.markdown(f"""
                 <h2 style='color: {COLORS["white"]}; text-align: center;'>
@@ -212,12 +261,28 @@ def render_sidebar():
 
         st.markdown("---")
 
-        # User info
+        # User profile picture placeholder and info
         username = get_current_user()
         st.markdown(f"""
-            <p style='color: {COLORS["light_accent"]}; text-align: center;'>
-                Logged in as: <strong>{username}</strong>
-            </p>
+            <div style='text-align: center; margin-bottom: 1rem;'>
+                <div style='
+                    width: 80px;
+                    height: 80px;
+                    border-radius: 50%;
+                    background-color: {COLORS["secondary"]};
+                    margin: 0 auto 0.5rem auto;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 2rem;
+                    color: {COLORS["white"]};
+                '>
+                    {username[0].upper() if username else "U"}
+                </div>
+                <p style='color: {COLORS["light_accent"]}; margin: 0;'>
+                    Logged in as: <strong>{username}</strong>
+                </p>
+            </div>
         """, unsafe_allow_html=True)
 
         # Logout button
@@ -245,23 +310,27 @@ def render_skills_form():
     st.markdown(f"<h3 class='section-header'>What areas interest you?</h3>", unsafe_allow_html=True)
     st.markdown("<p style='color: #556443;'>Click to select your areas of interest</p>", unsafe_allow_html=True)
 
+    # Callback function for interest toggle
+    def toggle_interest(interest_id):
+        if interest_id in st.session_state.selected_interests:
+            st.session_state.selected_interests.remove(interest_id)
+        else:
+            st.session_state.selected_interests.append(interest_id)
+
     # Create columns for interest bubbles
     cols = st.columns(4)
     for idx, interest in enumerate(INTEREST_AREAS):
         col_idx = idx % 4
         with cols[col_idx]:
             is_selected = interest['id'] in st.session_state.selected_interests
-            if st.button(
+            st.button(
                 interest['label'],
                 key=f"interest_{interest['id']}",
                 use_container_width=True,
-                type="primary" if is_selected else "secondary"
-            ):
-                if is_selected:
-                    st.session_state.selected_interests.remove(interest['id'])
-                else:
-                    st.session_state.selected_interests.append(interest['id'])
-                st.rerun()
+                type="primary" if is_selected else "secondary",
+                on_click=toggle_interest,
+                args=(interest['id'],)
+            )
 
     # Show selected interests
     if st.session_state.selected_interests:
@@ -467,19 +536,48 @@ def render_recommendations(client: DatabricksClient):
 
 def render_mock_recommendations(result: dict):
     """Render the mock recommendations in a structured format."""
-    # Courses section
-    st.markdown(f"<h3 class='section-header'>Recommended Courses</h3>", unsafe_allow_html=True)
+    user_profile = st.session_state.get('user_profile', {})
 
-    courses = result.get('courses', [])
-    for course in courses:
-        st.markdown(f"""
-            <div class="course-card">
-                <h4>{course['name']}</h4>
-                <p>{course['description']}</p>
-                <p><span class="difficulty-tag">{course['difficulty']}</span> | {course['duration']}</p>
-                <p><em>Why: {course['relevance']}</em></p>
-            </div>
-        """, unsafe_allow_html=True)
+    # Get Coursera courses based on user interests
+    interests = user_profile.get('interests', [])
+    skills_text = user_profile.get('skills_text', '')
+    coursera_courses = get_courses_for_interests(interests, skills_text, limit=5)
+
+    # Courses section
+    st.markdown(f"<h3 class='section-header'>Recommended Courses from Coursera</h3>", unsafe_allow_html=True)
+
+    if coursera_courses:
+        for course in coursera_courses:
+            # Build image HTML
+            if course.get('image'):
+                image_html = f'<img src="{course["image"]}" class="course-image" alt="{course["name"]}">'
+            else:
+                image_html = '<div class="course-image-placeholder">C</div>'
+
+            st.markdown(f"""
+                <a href="{course['url']}" target="_blank" class="course-card-link">
+                    <div class="course-card">
+                        {image_html}
+                        <span class="provider-tag">{course.get('provider', 'Coursera')}</span>
+                        <h4>{course['name']}</h4>
+                        <p>{course.get('description', '')}</p>
+                        <p><span class="difficulty-tag">{course.get('difficulty', 'Beginner')}</span> | {course.get('duration', 'Self-paced')}</p>
+                    </div>
+                </a>
+            """, unsafe_allow_html=True)
+    else:
+        # Fallback to mock courses if no Coursera courses found
+        courses = result.get('courses', [])
+        for course in courses:
+            st.markdown(f"""
+                <div class="course-card">
+                    <div class="course-image-placeholder">C</div>
+                    <h4>{course['name']}</h4>
+                    <p>{course['description']}</p>
+                    <p><span class="difficulty-tag">{course['difficulty']}</span> | {course['duration']}</p>
+                    <p><em>Why: {course['relevance']}</em></p>
+                </div>
+            """, unsafe_allow_html=True)
 
     # Mentors section
     st.markdown(f"<h3 class='section-header'>Recommended Mentors</h3>", unsafe_allow_html=True)
