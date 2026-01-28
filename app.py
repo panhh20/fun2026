@@ -13,8 +13,15 @@ from databricks_client import (
 )
 from coursera_client import get_courses_for_interests
 
-# Fixed Coursera course image (base64 encoded placeholder or URL)
-COURSERA_PLACEHOLDER_IMAGE = "https://d3njjcbhbojbot.cloudfront.net/api/utilities/v1/imageproxy/https://coursera-course-photos.s3.amazonaws.com/83/e258e0532611e5a5072321239ff4d4/jhep-coursera-course4.png"
+def get_coursera_image_base64():
+    """Get the Coursera background image as base64 for embedding in HTML."""
+    image_path = os.path.join(os.path.dirname(__file__), "assets", "coursera_bg.png")
+    if os.path.exists(image_path):
+        with open(image_path, "rb") as f:
+            data = base64.b64encode(f.read()).decode()
+            return f"data:image/png;base64,{data}"
+    # Fallback to a simple placeholder color if image not found
+    return None
 
 
 def get_logo_path():
@@ -645,13 +652,19 @@ def render_mock_recommendations(result):
     skills_text = user_profile.get('skills_text', '')
     coursera_courses = get_courses_for_interests(interests, skills_text, limit=5)
 
+    # Get the Coursera background image
+    coursera_img = get_coursera_image_base64()
+
     # Courses section
     st.markdown("<h3 class='section-header'>Recommended Courses from Coursera</h3>", unsafe_allow_html=True)
 
     if coursera_courses:
         for idx, course in enumerate(coursera_courses):
-            # Use fixed Coursera image
-            image_html = f'<img src="{COURSERA_PLACEHOLDER_IMAGE}" class="course-image" alt="Coursera Course">'
+            # Use fixed Coursera image from assets
+            if coursera_img:
+                image_html = f'<img src="{coursera_img}" class="course-image" alt="Coursera Course">'
+            else:
+                image_html = '<div class="course-image-placeholder">C</div>'
 
             course_id = course.get('url', course.get('name', ''))
             is_tracked = course_id in st.session_state.tracked_courses or course_id in st.session_state.completed_courses
@@ -691,9 +704,14 @@ def render_mock_recommendations(result):
             col1, col2 = st.columns([4, 1])
 
             with col1:
+                if coursera_img:
+                    fallback_image = f'<img src="{coursera_img}" class="course-image" alt="Course">'
+                else:
+                    fallback_image = '<div class="course-image-placeholder">C</div>'
+
                 st.markdown(f"""
                     <div class="course-card">
-                        <img src="{COURSERA_PLACEHOLDER_IMAGE}" class="course-image" alt="Course">
+                        {fallback_image}
                         <h4>{course['name']}</h4>
                         <p>{course['description']}</p>
                         <p><span class="difficulty-tag">{course['difficulty']}</span> | {course['duration']}</p>
