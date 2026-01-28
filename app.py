@@ -310,27 +310,22 @@ def render_skills_form():
     st.markdown(f"<h3 class='section-header'>What areas interest you?</h3>", unsafe_allow_html=True)
     st.markdown("<p style='color: #556443;'>Click to select your areas of interest</p>", unsafe_allow_html=True)
 
-    # Callback function for interest toggle
-    def toggle_interest(interest_id):
-        if interest_id in st.session_state.selected_interests:
-            st.session_state.selected_interests.remove(interest_id)
-        else:
-            st.session_state.selected_interests.append(interest_id)
-
     # Create columns for interest bubbles
     cols = st.columns(4)
     for idx, interest in enumerate(INTEREST_AREAS):
         col_idx = idx % 4
         with cols[col_idx]:
             is_selected = interest['id'] in st.session_state.selected_interests
-            st.button(
+            if st.button(
                 interest['label'],
                 key=f"interest_{interest['id']}",
                 use_container_width=True,
-                type="primary" if is_selected else "secondary",
-                on_click=toggle_interest,
-                args=(interest['id'],)
-            )
+                type="primary" if is_selected else "secondary"
+            ):
+                if is_selected:
+                    st.session_state.selected_interests.remove(interest['id'])
+                else:
+                    st.session_state.selected_interests.append(interest['id'])
 
     # Show selected interests
     if st.session_state.selected_interests:
