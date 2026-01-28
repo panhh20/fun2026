@@ -2,6 +2,8 @@
 
 import streamlit as st
 import os
+import base64
+from datetime import datetime
 from config import COLORS, SKILLS_CATEGORIES, EXPERIENCE_LEVELS, APP_CONFIG, INTEREST_AREAS
 from auth import is_authenticated, render_login_page, logout, get_current_user
 from databricks_client import (
@@ -10,6 +12,9 @@ from databricks_client import (
     get_databricks_client
 )
 from coursera_client import get_courses_for_interests
+
+# Fixed Coursera course image (base64 encoded placeholder or URL)
+COURSERA_PLACEHOLDER_IMAGE = "https://d3njjcbhbojbot.cloudfront.net/api/utilities/v1/imageproxy/https://coursera-course-photos.s3.amazonaws.com/83/e258e0532611e5a5072321239ff4d4/jhep-coursera-course4.png"
 
 
 def get_logo_path():
@@ -233,12 +238,102 @@ def apply_global_styles():
             color: {COLORS['white']};
             border-color: {COLORS['primary_dark']};
         }}
+
+        /* Sidebar profile button styling */
+        [data-testid="stSidebar"] button[kind="secondary"]:first-of-type {{
+            background-color: {COLORS['secondary']} !important;
+            color: {COLORS['white']} !important;
+            border-radius: 50% !important;
+            width: 80px !important;
+            height: 80px !important;
+            font-size: 2rem !important;
+            margin: 0 auto !important;
+            display: block !important;
+            border: none !important;
+            padding: 0 !important;
+        }}
+        [data-testid="stSidebar"] button[kind="secondary"]:first-of-type:hover {{
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }}
+
+        /* Profile page styles */
+        .profile-avatar {{
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background-color: {COLORS['secondary']};
+            margin: 0 auto 0.5rem auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: {COLORS['white']};
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }}
+        .profile-avatar:hover {{
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }}
+        .course-tracker-card {{
+            background-color: {COLORS['white']};
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 1rem;
+            border-left: 4px solid {COLORS['primary_dark']};
+        }}
+        .course-tracker-card.completed {{
+            border-left-color: #28a745;
+        }}
+        .course-tracker-card.in-progress {{
+            border-left-color: {COLORS['accent']};
+        }}
+        .course-status-tag {{
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }}
+        .status-completed {{
+            background-color: #d4edda;
+            color: #155724;
+        }}
+        .status-in-progress {{
+            background-color: {COLORS['light_accent']};
+            color: {COLORS['mid_accent']};
+        }}
+        .certificate-upload {{
+            background-color: {COLORS['light_accent']};
+            padding: 1rem;
+            border-radius: 5px;
+            margin-top: 0.5rem;
+        }}
+        .stats-card {{
+            background-color: {COLORS['white']};
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }}
+        .stats-number {{
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: {COLORS['primary_dark']};
+        }}
+        .stats-label {{
+            color: {COLORS['secondary']};
+            font-size: 0.9rem;
+        }}
         </style>
     """, unsafe_allow_html=True)
 
 
 def render_sidebar():
     """Render the sidebar with user info and logout."""
+    init_course_tracking()
     logo_path = get_logo_path()
 
     with st.sidebar:
@@ -257,29 +352,35 @@ def render_sidebar():
 
         st.markdown("---")
 
-        # User profile picture placeholder and info
+        # User profile picture placeholder and info - clickable
         username = get_current_user()
+
+        # Profile button (clicking navigates to profile page)
+        if st.button(
+            f"{username[0].upper() if username else 'U'}",
+            key="profile_btn",
+            help="Click to view your profile",
+            use_container_width=False
+        ):
+            st.session_state.current_page = "profile"
+            st.rerun()
+
+        tracked_count = len(st.session_state.get('tracked_courses', {}))
+        completed_count = len(st.session_state.get('completed_courses', {}))
+
         st.markdown(f"""
-            <div style='text-align: center; margin-bottom: 1rem;'>
-                <div style='
-                    width: 80px;
-                    height: 80px;
-                    border-radius: 50%;
-                    background-color: {COLORS["secondary"]};
-                    margin: 0 auto 0.5rem auto;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    font-size: 2rem;
-                    color: {COLORS["white"]};
-                '>
-                    {username[0].upper() if username else "U"}
-                </div>
-                <p style='color: {COLORS["light_accent"]}; margin: 0;'>
-                    Logged in as: <strong>{username}</strong>
-                </p>
-            </div>
+            <p style='color: {COLORS["light_accent"]}; margin: 0; text-align: center;'>
+                Logged in as: <strong>{username}</strong>
+            </p>
+            <p style='color: {COLORS["light_accent"]}; margin: 0.5rem 0 0 0; text-align: center; font-size: 0.8rem;'>
+                {tracked_count} in progress | {completed_count} completed
+            </p>
+            <p style='color: {COLORS["secondary"]}; margin: 0.25rem 0 0 0; text-align: center; font-size: 0.75rem;'>
+                Click avatar to view profile
+            </p>
         """, unsafe_allow_html=True)
+
+        st.markdown("---")
 
         # Logout button
         if st.button("Logout", use_container_width=True):
@@ -416,7 +517,7 @@ def render_skills_form():
 
     # Submit button
     st.markdown("<br>", unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([1, 2, 1])
+    _, col2, _ = st.columns([1, 2, 1])
     with col2:
         submit = st.button("Get Recommendations", use_container_width=True, type="primary")
 
@@ -516,17 +617,27 @@ def render_recommendations(client):
             """, unsafe_allow_html=True)
             render_mock_recommendations(result)
 
-    # Back button
+    # Navigation buttons
     st.markdown("<br>", unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
+    col1, col2, col3 = st.columns(3)
+    with col1:
         if st.button("Back to Skills Form", use_container_width=True):
             st.session_state.form_submitted = False
+            st.session_state.current_page = "main"
+            st.rerun()
+    with col2:
+        pass
+    with col3:
+        tracked_count = len(st.session_state.get('tracked_courses', {}))
+        completed_count = len(st.session_state.get('completed_courses', {}))
+        if st.button(f"My Courses ({tracked_count + completed_count})", use_container_width=True):
+            st.session_state.current_page = "profile"
             st.rerun()
 
 
 def render_mock_recommendations(result):
     """Render the mock recommendations in a structured format."""
+    init_course_tracking()
     user_profile = st.session_state.get('user_profile', {})
 
     # Get Coursera courses based on user interests
@@ -538,37 +649,81 @@ def render_mock_recommendations(result):
     st.markdown("<h3 class='section-header'>Recommended Courses from Coursera</h3>", unsafe_allow_html=True)
 
     if coursera_courses:
-        for course in coursera_courses:
-            # Build image HTML
-            if course.get('image'):
-                image_html = f'<img src="{course["image"]}" class="course-image" alt="{course["name"]}">'
-            else:
-                image_html = '<div class="course-image-placeholder">C</div>'
+        for idx, course in enumerate(coursera_courses):
+            # Use fixed Coursera image
+            image_html = f'<img src="{COURSERA_PLACEHOLDER_IMAGE}" class="course-image" alt="Coursera Course">'
 
-            st.markdown(f"""
-                <a href="{course['url']}" target="_blank" class="course-card-link">
-                    <div class="course-card">
-                        {image_html}
-                        <span class="provider-tag">{course.get('provider', 'Coursera')}</span>
-                        <h4>{course['name']}</h4>
-                        <p>{course.get('description', '')}</p>
-                        <p><span class="difficulty-tag">{course.get('difficulty', 'Beginner')}</span> | {course.get('duration', 'Self-paced')}</p>
-                    </div>
-                </a>
-            """, unsafe_allow_html=True)
+            course_id = course.get('url', course.get('name', ''))
+            is_tracked = course_id in st.session_state.tracked_courses or course_id in st.session_state.completed_courses
+
+            col1, col2 = st.columns([4, 1])
+
+            with col1:
+                st.markdown(f"""
+                    <a href="{course['url']}" target="_blank" class="course-card-link">
+                        <div class="course-card">
+                            {image_html}
+                            <span class="provider-tag">{course.get('provider', 'Coursera')}</span>
+                            <h4>{course['name']}</h4>
+                            <p>{course.get('description', '')}</p>
+                            <p><span class="difficulty-tag">{course.get('difficulty', 'Beginner')}</span> | {course.get('duration', 'Self-paced')}</p>
+                        </div>
+                    </a>
+                """, unsafe_allow_html=True)
+
+            with col2:
+                st.markdown("<div style='height: 120px;'></div>", unsafe_allow_html=True)
+                if is_tracked:
+                    st.markdown(f"""
+                        <p style='color: {COLORS["accent"]}; font-size: 0.85rem; text-align: center;'>
+                            Already tracking
+                        </p>
+                    """, unsafe_allow_html=True)
+                else:
+                    if st.button("Add to Tracker", key=f"add_course_{idx}", use_container_width=True):
+                        if add_course_to_tracker(course):
+                            st.success(f"Added '{course['name'][:30]}...' to your tracker!")
+                            st.rerun()
     else:
         # Fallback to mock courses if no Coursera courses found
         courses = result.get('courses', [])
-        for course in courses:
-            st.markdown(f"""
-                <div class="course-card">
-                    <div class="course-image-placeholder">C</div>
-                    <h4>{course['name']}</h4>
-                    <p>{course['description']}</p>
-                    <p><span class="difficulty-tag">{course['difficulty']}</span> | {course['duration']}</p>
-                    <p><em>Why: {course['relevance']}</em></p>
-                </div>
-            """, unsafe_allow_html=True)
+        for idx, course in enumerate(courses):
+            col1, col2 = st.columns([4, 1])
+
+            with col1:
+                st.markdown(f"""
+                    <div class="course-card">
+                        <img src="{COURSERA_PLACEHOLDER_IMAGE}" class="course-image" alt="Course">
+                        <h4>{course['name']}</h4>
+                        <p>{course['description']}</p>
+                        <p><span class="difficulty-tag">{course['difficulty']}</span> | {course['duration']}</p>
+                        <p><em>Why: {course['relevance']}</em></p>
+                    </div>
+                """, unsafe_allow_html=True)
+
+            with col2:
+                st.markdown("<div style='height: 120px;'></div>", unsafe_allow_html=True)
+                mock_course = {
+                    'name': course['name'],
+                    'provider': 'Creative Lab',
+                    'url': '#',
+                    'difficulty': course['difficulty'],
+                    'duration': course['duration']
+                }
+                course_id = course['name']
+                is_tracked = course_id in st.session_state.tracked_courses or course_id in st.session_state.completed_courses
+
+                if is_tracked:
+                    st.markdown(f"""
+                        <p style='color: {COLORS["accent"]}; font-size: 0.85rem; text-align: center;'>
+                            Already tracking
+                        </p>
+                    """, unsafe_allow_html=True)
+                else:
+                    if st.button("Add to Tracker", key=f"add_mock_{idx}", use_container_width=True):
+                        if add_course_to_tracker(mock_course):
+                            st.success(f"Added '{course['name'][:30]}...' to your tracker!")
+                            st.rerun()
 
     # Mentors section
     st.markdown("<h3 class='section-header'>Recommended Mentors</h3>", unsafe_allow_html=True)
@@ -607,6 +762,176 @@ def render_mock_recommendations(result):
     """, unsafe_allow_html=True)
 
 
+def init_course_tracking():
+    """Initialize course tracking in session state."""
+    if 'tracked_courses' not in st.session_state:
+        st.session_state.tracked_courses = {}
+    if 'completed_courses' not in st.session_state:
+        st.session_state.completed_courses = {}
+
+
+def add_course_to_tracker(course):
+    """Add a course to the user's tracker."""
+    init_course_tracking()
+    course_id = course.get('url', course.get('name', ''))
+    if course_id not in st.session_state.tracked_courses and course_id not in st.session_state.completed_courses:
+        st.session_state.tracked_courses[course_id] = {
+            'name': course.get('name', 'Unknown Course'),
+            'provider': course.get('provider', 'Coursera'),
+            'url': course.get('url', ''),
+            'difficulty': course.get('difficulty', 'Beginner'),
+            'duration': course.get('duration', 'Self-paced'),
+            'added_date': datetime.now().strftime("%Y-%m-%d"),
+            'status': 'in_progress'
+        }
+        return True
+    return False
+
+
+def mark_course_complete(course_id, certificate_data=None):
+    """Mark a course as complete with optional certificate."""
+    init_course_tracking()
+    if course_id in st.session_state.tracked_courses:
+        course = st.session_state.tracked_courses.pop(course_id)
+        course['status'] = 'completed'
+        course['completed_date'] = datetime.now().strftime("%Y-%m-%d")
+        if certificate_data:
+            course['certificate'] = certificate_data
+        st.session_state.completed_courses[course_id] = course
+        return True
+    return False
+
+
+def render_profile_page():
+    """Render the user profile page with course tracker."""
+    init_course_tracking()
+    username = get_current_user()
+
+    st.markdown(f"""
+        <div class="main-header">
+            <h1>{username}'s Profile</h1>
+            <p>Track your learning journey and achievements</p>
+        </div>
+    """, unsafe_allow_html=True)
+
+    # Profile stats
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.markdown(f"""
+            <div class="stats-card">
+                <div class="stats-number">{len(st.session_state.tracked_courses)}</div>
+                <div class="stats-label">Courses In Progress</div>
+            </div>
+        """, unsafe_allow_html=True)
+
+    with col2:
+        st.markdown(f"""
+            <div class="stats-card">
+                <div class="stats-number">{len(st.session_state.completed_courses)}</div>
+                <div class="stats-label">Courses Completed</div>
+            </div>
+        """, unsafe_allow_html=True)
+
+    with col3:
+        total = len(st.session_state.tracked_courses) + len(st.session_state.completed_courses)
+        st.markdown(f"""
+            <div class="stats-card">
+                <div class="stats-number">{total}</div>
+                <div class="stats-label">Total Courses</div>
+            </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # Courses In Progress Section
+    st.markdown("<h3 class='section-header'>Courses In Progress</h3>", unsafe_allow_html=True)
+
+    if st.session_state.tracked_courses:
+        for course_id, course in list(st.session_state.tracked_courses.items()):
+            with st.container():
+                st.markdown(f"""
+                    <div class="course-tracker-card in-progress">
+                        <span class="course-status-tag status-in-progress">In Progress</span>
+                        <h4 style="color: {COLORS['primary_dark']}; margin-top: 0.5rem;">
+                            <a href="{course['url']}" target="_blank" style="color: {COLORS['primary_dark']}; text-decoration: none;">
+                                {course['name']}
+                            </a>
+                        </h4>
+                        <p style="color: {COLORS['text_dark']};">{course['provider']} | {course['difficulty']} | {course['duration']}</p>
+                        <p style="color: {COLORS['secondary']}; font-size: 0.85rem;">Started: {course['added_date']}</p>
+                    </div>
+                """, unsafe_allow_html=True)
+
+                # Certificate upload section
+                col1, col2 = st.columns([3, 1])
+                with col1:
+                    uploaded_file = st.file_uploader(
+                        f"Upload certificate for {course['name'][:30]}...",
+                        type=['pdf', 'png', 'jpg', 'jpeg'],
+                        key=f"cert_{course_id[:20]}"
+                    )
+                with col2:
+                    if st.button("Mark Complete", key=f"complete_{course_id[:20]}", use_container_width=True):
+                        cert_data = None
+                        if uploaded_file:
+                            cert_data = {
+                                'filename': uploaded_file.name,
+                                'type': uploaded_file.type,
+                                'size': uploaded_file.size
+                            }
+                        mark_course_complete(course_id, cert_data)
+                        st.success(f"Congratulations! '{course['name']}' marked as complete!")
+                        st.rerun()
+
+                st.markdown("<hr style='border: none; border-top: 1px solid #e5e6de; margin: 1rem 0;'>", unsafe_allow_html=True)
+    else:
+        st.markdown("""
+            <div class="info-box">
+                <p>No courses in progress yet. Browse recommendations and add courses to start tracking!</p>
+            </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # Completed Courses Section
+    st.markdown("<h3 class='section-header'>Completed Courses</h3>", unsafe_allow_html=True)
+
+    if st.session_state.completed_courses:
+        for course_id, course in st.session_state.completed_courses.items():
+            cert_info = ""
+            if course.get('certificate'):
+                cert_info = f"<p style='color: #28a745; font-size: 0.85rem;'>Certificate: {course['certificate']['filename']}</p>"
+
+            st.markdown(f"""
+                <div class="course-tracker-card completed">
+                    <span class="course-status-tag status-completed">Completed</span>
+                    <h4 style="color: {COLORS['primary_dark']}; margin-top: 0.5rem;">
+                        <a href="{course['url']}" target="_blank" style="color: {COLORS['primary_dark']}; text-decoration: none;">
+                            {course['name']}
+                        </a>
+                    </h4>
+                    <p style="color: {COLORS['text_dark']};">{course['provider']} | {course['difficulty']} | {course['duration']}</p>
+                    <p style="color: {COLORS['secondary']}; font-size: 0.85rem;">Completed: {course.get('completed_date', 'N/A')}</p>
+                    {cert_info}
+                </div>
+            """, unsafe_allow_html=True)
+    else:
+        st.markdown("""
+            <div class="info-box">
+                <p>No completed courses yet. Keep learning and upload your certificates when you finish!</p>
+            </div>
+        """, unsafe_allow_html=True)
+
+    # Back button
+    st.markdown("<br>", unsafe_allow_html=True)
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        if st.button("Back to Recommendations", use_container_width=True):
+            st.session_state.current_page = "main"
+            st.rerun()
+
+
 def main():
     """Main application entry point."""
     # Page configuration - must be first Streamlit command
@@ -627,11 +952,17 @@ def main():
     # Render sidebar
     render_sidebar()
 
+    # Initialize page state
+    if 'current_page' not in st.session_state:
+        st.session_state.current_page = "main"
+
     # Get Databricks client from environment variables
     client = get_databricks_client()
 
-    # Main content
-    if st.session_state.get('form_submitted', False):
+    # Page routing
+    if st.session_state.current_page == "profile":
+        render_profile_page()
+    elif st.session_state.get('form_submitted', False):
         render_recommendations(client)
     else:
         render_skills_form()
