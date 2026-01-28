@@ -1,288 +1,336 @@
 # Coursera integration for Better Youth Creative Lab
-# Note: Using curated courses with verified URLs since Coursera API requires partnership access
+# Web scraper to fetch real courses from Coursera search results
 
+import requests
+from bs4 import BeautifulSoup
 from typing import List, Dict
+import json
+import re
 
-# Curated list of REAL Coursera courses with verified URLs
-# All URLs and images have been verified to work
-CURATED_COURSES = {
-    "animation": [
-        {
-            "name": "Animation with JavaScript and jQuery",
-            "provider": "University of California, Davis",
-            "url": "https://www.coursera.org/learn/animation-javascript-jquery",
-            "image": "https://s3.amazonaws.com/coursera-course-photos/08/33c9e0d31511e5a5072119e6c3d9e5/jhep-coursera-course4.png",
-            "difficulty": "Beginner",
-            "duration": "4 weeks",
-            "description": "Learn to create animations and interactive elements using JavaScript and jQuery."
-        },
-        {
-            "name": "Character Design for Video Games",
-            "provider": "California Institute of the Arts",
-            "url": "https://www.coursera.org/learn/game-character-design",
-            "image": "https://s3.amazonaws.com/coursera-course-photos/a4/7d7a10d54411e5b193d32f0d9a52f8/CreateCharacterforVideoGames_course_image.jpg",
-            "difficulty": "Beginner",
-            "duration": "4 weeks",
-            "description": "Create memorable and unique characters for games through the visual development process."
-        },
-        {
-            "name": "Introduction to Game Development",
-            "provider": "Michigan State University",
-            "url": "https://www.coursera.org/learn/game-development",
-            "image": "https://s3.amazonaws.com/coursera-course-photos/ef/a3a8a0caf511e5b7c46f3589ac0e36/Intro_to_Game_Development.jpg",
-            "difficulty": "Beginner",
-            "duration": "4 weeks",
-            "description": "Learn the game development process and design patterns for creating games."
-        },
-    ],
-    "vfx": [
-        {
-            "name": "Visual Elements of User Interface Design",
-            "provider": "California Institute of the Arts",
-            "url": "https://www.coursera.org/learn/visual-elements-user-interface-design",
-            "image": "https://s3.amazonaws.com/coursera-course-photos/6e/ae4410d52d11e5b4a0493fa43d7c96/UI_Design_visual-elements_social.jpg",
-            "difficulty": "Beginner",
-            "duration": "4 weeks",
-            "description": "Learn the fundamentals of visual design for creating effective user interfaces."
-        },
-        {
-            "name": "Fundamentals of Graphic Design",
-            "provider": "California Institute of the Arts",
-            "url": "https://www.coursera.org/learn/fundamentals-of-graphic-design",
-            "image": "https://s3.amazonaws.com/coursera-course-photos/0f/051d70d60611e5b4a0493fa43d7c96/fundamentals_social.jpg",
-            "difficulty": "Beginner",
-            "duration": "4 weeks",
-            "description": "Learn the fundamental skills of graphic design: imagery, typography, composition, and color."
-        },
-    ],
-    "film": [
-        {
-            "name": "Introduction to Making Documentary Films",
-            "provider": "Michigan State University",
-            "url": "https://www.coursera.org/learn/documentary-film",
-            "image": "https://s3.amazonaws.com/coursera-course-photos/7e/81a450d3e611e5a5072119e6c3d9e5/Intro_to_Doc.jpg",
-            "difficulty": "Beginner",
-            "duration": "6 weeks",
-            "description": "Learn how to create documentary films from concept through production and post-production."
-        },
-        {
-            "name": "The Language of Design: Form and Meaning",
-            "provider": "California Institute of the Arts",
-            "url": "https://www.coursera.org/learn/design-language",
-            "image": "https://s3.amazonaws.com/coursera-course-photos/59/03b5b0d60611e5b4a0493fa43d7c96/design-language_social.jpg",
-            "difficulty": "Beginner",
-            "duration": "4 weeks",
-            "description": "Explore the language of visual design and how form communicates meaning."
-        },
-        {
-            "name": "Screenwriting",
-            "provider": "Michigan State University",
-            "url": "https://www.coursera.org/learn/screenwriting",
-            "image": "https://s3.amazonaws.com/coursera-course-photos/af/3e3dd0d3e611e5a5072119e6c3d9e5/Screenwriting-course-image.jpg",
-            "difficulty": "Beginner",
-            "duration": "4 weeks",
-            "description": "Learn the fundamentals of screenwriting for film and television."
-        },
-    ],
-    "motion_graphics": [
-        {
-            "name": "Introduction to Typography",
-            "provider": "California Institute of the Arts",
-            "url": "https://www.coursera.org/learn/typography",
-            "image": "https://s3.amazonaws.com/coursera-course-photos/b6/4c9ef0d60611e5b4a0493fa43d7c96/typography_social.jpg",
-            "difficulty": "Beginner",
-            "duration": "4 weeks",
-            "description": "Learn typographic principles and how to effectively use type in design."
-        },
-        {
-            "name": "Graphic Design Specialization",
-            "provider": "California Institute of the Arts",
-            "url": "https://www.coursera.org/specializations/graphic-design",
-            "image": "https://s3.amazonaws.com/coursera_assets/meta_images/generated/XDP/XDP~SPECIALIZATION!~graphic-design/XDP~SPECIALIZATION!~graphic-design.jpeg",
-            "difficulty": "Beginner",
-            "duration": "6 months",
-            "description": "Master the fundamentals of graphic design from CalArts, the premier art college."
-        },
-        {
-            "name": "Introduction to Imagemaking",
-            "provider": "California Institute of the Arts",
-            "url": "https://www.coursera.org/learn/imagemaking",
-            "image": "https://s3.amazonaws.com/coursera-course-photos/e4/4d6940d60611e5b4a0493fa43d7c96/imagemaking_social.jpg",
-            "difficulty": "Beginner",
-            "duration": "4 weeks",
-            "description": "Learn methods of making images and how to use them effectively in design."
-        },
-    ],
-    "video_editing": [
-        {
-            "name": "Create a Video Trailer with iMovie",
-            "provider": "Coursera Project Network",
-            "url": "https://www.coursera.org/projects/create-video-trailer-imovie",
-            "image": "https://s3.amazonaws.com/coursera-course-photos/09/3a4cd8b3bc4e5e817c69d0f3f74c61/Trailer-project-logo.png",
-            "difficulty": "Beginner",
-            "duration": "2 hours",
-            "description": "Learn to create an engaging video trailer using iMovie."
-        },
-        {
-            "name": "Create a Video Using Clipchamp",
-            "provider": "Coursera Project Network",
-            "url": "https://www.coursera.org/projects/create-video-clipchamp",
-            "image": "https://s3.amazonaws.com/coursera-course-photos/f7/a0cc1e3e6e4b36a7f7a76f3f7a76f3/clipchamp-logo.png",
-            "difficulty": "Beginner",
-            "duration": "1 hour",
-            "description": "Create professional videos using the free Clipchamp video editor."
-        },
-    ],
-    "photography": [
-        {
-            "name": "Photography Basics and Beyond",
-            "provider": "Michigan State University",
-            "url": "https://www.coursera.org/specializations/photography-basics",
-            "image": "https://s3.amazonaws.com/coursera_assets/meta_images/generated/XDP/XDP~SPECIALIZATION!~photography-basics/XDP~SPECIALIZATION!~photography-basics.jpeg",
-            "difficulty": "Beginner",
-            "duration": "6 months",
-            "description": "Learn photography fundamentals from smartphone to DSLR camera techniques."
-        },
-        {
-            "name": "Cameras, Exposure, and Photography",
-            "provider": "Michigan State University",
-            "url": "https://www.coursera.org/learn/exposure-photography",
-            "image": "https://s3.amazonaws.com/coursera-course-photos/65/28d8a0d31511e5a5072119e6c3d9e5/Exposure-and-Photo.jpg",
-            "difficulty": "Beginner",
-            "duration": "4 weeks",
-            "description": "Master camera settings, exposure, and photographic techniques."
-        },
-    ],
-    "music_video": [
-        {
-            "name": "The DIY Musician",
-            "provider": "Berklee College of Music",
-            "url": "https://www.coursera.org/learn/diy-musician",
-            "image": "https://s3.amazonaws.com/coursera-course-photos/22/cf6580f6bc11e5bcab3969ffc5c6c7/DIY.jpg",
-            "difficulty": "Beginner",
-            "duration": "4 weeks",
-            "description": "Learn to create, promote, and distribute your music independently."
-        },
-        {
-            "name": "Pro Tools Basics",
-            "provider": "Berklee College of Music",
-            "url": "https://www.coursera.org/learn/pro-tools-basics",
-            "image": "https://s3.amazonaws.com/coursera-course-photos/e8/a0bca0f6bc11e5bcab3969ffc5c6c7/Pro-Tools.jpg",
-            "difficulty": "Beginner",
-            "duration": "4 weeks",
-            "description": "Learn the fundamentals of Pro Tools for music production."
-        },
-    ],
-    "storytelling": [
-        {
-            "name": "Creative Writing Specialization",
-            "provider": "Wesleyan University",
-            "url": "https://www.coursera.org/specializations/creative-writing",
-            "image": "https://s3.amazonaws.com/coursera_assets/meta_images/generated/XDP/XDP~SPECIALIZATION!~creative-writing/XDP~SPECIALIZATION!~creative-writing.jpeg",
-            "difficulty": "Beginner",
-            "duration": "6 months",
-            "description": "Develop your craft in fiction, memoir, and personal essay writing."
-        },
-        {
-            "name": "Storytelling and Influencing",
-            "provider": "Macquarie University",
-            "url": "https://www.coursera.org/learn/communicate-with-impact",
-            "image": "https://s3.amazonaws.com/coursera-course-photos/44/7c0ea0e0cc11e79764d9a02e79e3ff/unnamed.png",
-            "difficulty": "Beginner",
-            "duration": "5 weeks",
-            "description": "Master the art of storytelling to influence and persuade audiences."
-        },
-    ],
-    "general": [
-        {
-            "name": "Build a Free Website with WordPress",
-            "provider": "Coursera Project Network",
-            "url": "https://www.coursera.org/projects/build-free-website-wordpress",
-            "image": "https://s3.amazonaws.com/coursera-course-photos/d8/ced9609d7711e9a72a77da7ecaa6a2/wordpress-logo.png",
-            "difficulty": "Beginner",
-            "duration": "2 hours",
-            "description": "Create a professional portfolio website using WordPress."
-        },
-        {
-            "name": "Introduction to User Experience Design",
-            "provider": "Georgia Institute of Technology",
-            "url": "https://www.coursera.org/learn/user-experience-design",
-            "image": "https://s3.amazonaws.com/coursera-course-photos/58/e12230c2d611e4a5ec8fb84e79ccc2/ux_thumbnail_v1.jpg",
-            "difficulty": "Beginner",
-            "duration": "4 weeks",
-            "description": "Learn the fundamentals of user experience design and research methods."
-        },
-        {
-            "name": "Social Media Marketing Specialization",
-            "provider": "Northwestern University",
-            "url": "https://www.coursera.org/specializations/social-media-marketing",
-            "image": "https://s3.amazonaws.com/coursera_assets/meta_images/generated/XDP/XDP~SPECIALIZATION!~social-media-marketing/XDP~SPECIALIZATION!~social-media-marketing.jpeg",
-            "difficulty": "Beginner",
-            "duration": "5 months",
-            "description": "Master social media marketing to grow your creative brand and audience."
-        },
-    ],
+# Headers to mimic a browser request
+HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.5',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Connection': 'keep-alive',
 }
 
-# Map interest areas to course categories
-INTEREST_TO_CATEGORY = {
-    "Film & Cinema": ["film", "storytelling", "video_editing"],
-    "Animation": ["animation", "motion_graphics"],
-    "Visual Effects": ["vfx", "motion_graphics"],
-    "Motion Graphics": ["motion_graphics", "animation"],
-    "Game Cinematics": ["animation", "vfx"],
-    "Commercials & Ads": ["motion_graphics", "video_editing"],
-    "Music Videos": ["music_video", "video_editing", "motion_graphics"],
-    "Documentary": ["film", "storytelling", "video_editing"],
-    "Social Media Content": ["general", "video_editing", "photography"],
-    "Broadcast & TV": ["film", "video_editing"],
-    "Corporate Video": ["video_editing", "motion_graphics"],
-    "Indie Films": ["film", "storytelling"],
+# Map interest areas to search queries
+INTEREST_TO_SEARCH = {
+    "Film & Cinema": "filmmaking cinematography",
+    "Animation": "animation 2d 3d",
+    "Visual Effects": "visual effects vfx compositing",
+    "Motion Graphics": "motion graphics after effects",
+    "Game Cinematics": "game design animation",
+    "Commercials & Ads": "video production advertising",
+    "Music Videos": "music video production",
+    "Documentary": "documentary filmmaking",
+    "Social Media Content": "social media video content creation",
+    "Broadcast & TV": "broadcast television production",
+    "Corporate Video": "corporate video production",
+    "Indie Films": "independent filmmaking screenwriting",
 }
 
+# Fallback curated courses in case scraping fails
+FALLBACK_COURSES = [
+    {
+        "name": "Fundamentals of Graphic Design",
+        "provider": "California Institute of the Arts",
+        "url": "https://www.coursera.org/learn/fundamentals-of-graphic-design",
+        "image": None,
+        "difficulty": "Beginner",
+        "duration": "4 weeks",
+        "description": "Learn the fundamental skills of graphic design."
+    },
+    {
+        "name": "Introduction to User Experience Design",
+        "provider": "Georgia Institute of Technology",
+        "url": "https://www.coursera.org/learn/user-experience-design",
+        "image": None,
+        "difficulty": "Beginner",
+        "duration": "4 weeks",
+        "description": "Learn the fundamentals of user experience design."
+    },
+    {
+        "name": "Creative Writing Specialization",
+        "provider": "Wesleyan University",
+        "url": "https://www.coursera.org/specializations/creative-writing",
+        "image": None,
+        "difficulty": "Beginner",
+        "duration": "6 months",
+        "description": "Develop your craft in creative writing."
+    },
+    {
+        "name": "Photography Basics",
+        "provider": "Michigan State University",
+        "url": "https://www.coursera.org/specializations/photography-basics",
+        "image": None,
+        "difficulty": "Beginner",
+        "duration": "6 months",
+        "description": "Learn photography fundamentals."
+    },
+    {
+        "name": "Social Media Marketing",
+        "provider": "Northwestern University",
+        "url": "https://www.coursera.org/specializations/social-media-marketing",
+        "image": None,
+        "difficulty": "Beginner",
+        "duration": "5 months",
+        "description": "Master social media marketing."
+    },
+]
 
-def get_courses_for_interests(interests: List[str], skills_text: str = "", limit: int = 5) -> List[Dict]:
+
+def scrape_coursera_search(query: str, limit: int = 10) -> List[Dict]:
     """
-    Get recommended Coursera courses based on user interests.
+    Scrape Coursera search results for courses.
 
     Args:
-        interests: List of interest areas (e.g., ["Animation", "Film & Cinema"])
-        skills_text: Optional text describing user's skills
+        query: Search query string
         limit: Maximum number of courses to return
 
     Returns:
-        List of course dictionaries with name, url, image, etc.
+        List of course dictionaries
     """
     courses = []
-    seen_names = set()
 
-    # Collect courses from matching categories
-    for interest in interests:
-        categories = INTEREST_TO_CATEGORY.get(interest, ["general"])
-        for category in categories:
-            category_courses = CURATED_COURSES.get(category, [])
-            for course in category_courses:
-                if course["name"] not in seen_names:
-                    courses.append(course)
-                    seen_names.add(course["name"])
+    try:
+        # Coursera search URL
+        search_url = f"https://www.coursera.org/search?query={requests.utils.quote(query)}&index=prod_all_launched_products_term_optimization"
 
-    # If we don't have enough courses, add general ones
-    if len(courses) < limit:
-        for course in CURATED_COURSES.get("general", []):
-            if course["name"] not in seen_names:
+        response = requests.get(search_url, headers=HEADERS, timeout=10)
+
+        if response.status_code != 200:
+            print(f"Coursera search returned status {response.status_code}")
+            return []
+
+        soup = BeautifulSoup(response.text, 'html.parser')
+
+        # Try to find course data in the page's JSON data
+        # Coursera often embeds course data in script tags
+        scripts = soup.find_all('script', type='application/json')
+
+        for script in scripts:
+            try:
+                data = json.loads(script.string)
+                # Look for course data in various possible structures
+                courses_data = extract_courses_from_json(data, limit)
+                if courses_data:
+                    return courses_data
+            except (json.JSONDecodeError, TypeError):
+                continue
+
+        # Alternative: Try to parse the HTML directly
+        # Look for course cards
+        course_cards = soup.find_all('div', class_=re.compile(r'card|result|course', re.I))
+
+        for card in course_cards[:limit]:
+            course = extract_course_from_card(card)
+            if course and course.get('name') and course.get('url'):
                 courses.append(course)
-                seen_names.add(course["name"])
 
-    # If still not enough, add from other categories
-    if len(courses) < limit:
-        for category, category_courses in CURATED_COURSES.items():
-            for course in category_courses:
-                if course["name"] not in seen_names:
-                    courses.append(course)
-                    seen_names.add(course["name"])
-                if len(courses) >= limit:
-                    break
-            if len(courses) >= limit:
-                break
+        # If HTML parsing didn't work, try the API endpoint
+        if not courses:
+            courses = try_coursera_api(query, limit)
+
+    except requests.exceptions.RequestException as e:
+        print(f"Error scraping Coursera: {e}")
+    except Exception as e:
+        print(f"Unexpected error: {e}")
 
     return courses[:limit]
+
+
+def extract_courses_from_json(data: dict, limit: int) -> List[Dict]:
+    """Extract course information from Coursera's JSON data."""
+    courses = []
+
+    def search_for_courses(obj, depth=0):
+        if depth > 10 or len(courses) >= limit:
+            return
+
+        if isinstance(obj, dict):
+            # Check if this looks like a course object
+            if 'name' in obj and ('slug' in obj or 'url' in obj):
+                course = {
+                    'name': obj.get('name', ''),
+                    'provider': obj.get('partnerName', obj.get('partners', [{}])[0].get('name', 'Coursera') if isinstance(obj.get('partners'), list) else 'Coursera'),
+                    'url': f"https://www.coursera.org/learn/{obj.get('slug', '')}" if obj.get('slug') else obj.get('url', ''),
+                    'image': obj.get('imageUrl', obj.get('photoUrl', obj.get('image', None))),
+                    'difficulty': obj.get('difficultyLevel', obj.get('level', 'Beginner')),
+                    'duration': obj.get('workload', obj.get('duration', 'Self-paced')),
+                    'description': (obj.get('description', '') or '')[:200],
+                }
+                if course['name'] and course['url']:
+                    courses.append(course)
+
+            # Recursively search
+            for key, value in obj.items():
+                search_for_courses(value, depth + 1)
+
+        elif isinstance(obj, list):
+            for item in obj:
+                search_for_courses(item, depth + 1)
+
+    search_for_courses(data)
+    return courses
+
+
+def extract_course_from_card(card) -> Dict:
+    """Extract course information from an HTML card element."""
+    course = {}
+
+    try:
+        # Try to find the course link and name
+        link = card.find('a', href=re.compile(r'/learn/|/specializations/|/professional-certificates/'))
+        if link:
+            course['url'] = 'https://www.coursera.org' + link.get('href', '') if link.get('href', '').startswith('/') else link.get('href', '')
+            course['name'] = link.get_text(strip=True) or link.get('aria-label', '')
+
+        # Try to find the image
+        img = card.find('img')
+        if img:
+            course['image'] = img.get('src') or img.get('data-src')
+
+        # Try to find the provider
+        provider_elem = card.find(string=re.compile(r'University|Institute|College|School', re.I))
+        if provider_elem:
+            course['provider'] = provider_elem.strip()
+        else:
+            course['provider'] = 'Coursera'
+
+        # Try to find difficulty and duration
+        course['difficulty'] = 'Beginner'
+        course['duration'] = 'Self-paced'
+
+        # Try to find description
+        desc = card.find('p') or card.find('span', class_=re.compile(r'desc|summary', re.I))
+        if desc:
+            course['description'] = desc.get_text(strip=True)[:200]
+        else:
+            course['description'] = ''
+
+    except Exception:
+        pass
+
+    return course
+
+
+def try_coursera_api(query: str, limit: int) -> List[Dict]:
+    """Try to fetch courses from Coursera's internal API."""
+    courses = []
+
+    try:
+        # Coursera's internal search API
+        api_url = "https://www.coursera.org/api/search/v1"
+        params = {
+            'q': query,
+            'limit': limit,
+            'start': 0,
+            'entityTypeFilters': 'Courses,Specializations'
+        }
+
+        response = requests.get(api_url, params=params, headers=HEADERS, timeout=10)
+
+        if response.status_code == 200:
+            data = response.json()
+
+            for element in data.get('elements', []):
+                course = {
+                    'name': element.get('name', ''),
+                    'provider': element.get('partnerName', 'Coursera'),
+                    'url': f"https://www.coursera.org/learn/{element.get('slug', '')}",
+                    'image': element.get('imageUrl'),
+                    'difficulty': element.get('difficultyLevel', 'Beginner'),
+                    'duration': element.get('workload', 'Self-paced'),
+                    'description': (element.get('description', '') or '')[:200],
+                }
+                if course['name']:
+                    courses.append(course)
+
+    except Exception:
+        pass
+
+    return courses
+
+
+def get_courses_for_interests(interests: List[str], skills_text: str = "", limit: int = 10) -> List[Dict]:
+    """
+    Get courses from Coursera based on user interests.
+    Scrapes Coursera search results and returns up to `limit` courses.
+
+    Args:
+        interests: List of interest areas
+        skills_text: Optional text describing user's skills (used for search refinement)
+        limit: Maximum number of courses to return (default 10 for model selection)
+
+    Returns:
+        List of course dictionaries
+    """
+    all_courses = []
+    seen_urls = set()
+
+    # Build search queries from interests
+    search_queries = []
+    for interest in interests:
+        query = INTEREST_TO_SEARCH.get(interest, interest.lower())
+        search_queries.append(query)
+
+    # Add skills to search if provided
+    if skills_text:
+        # Extract key terms
+        skills_terms = skills_text.replace('|', ' ').replace(',', ' ')[:100]
+        search_queries.append(skills_terms)
+
+    # If no interests, use a default query
+    if not search_queries:
+        search_queries = ["video production media creative"]
+
+    # Search for each query
+    for query in search_queries[:3]:  # Limit to 3 queries to avoid too many requests
+        courses = scrape_coursera_search(query, limit=10)
+
+        for course in courses:
+            url = course.get('url', '')
+            if url and url not in seen_urls:
+                seen_urls.add(url)
+                all_courses.append(course)
+
+    # If scraping failed or returned too few results, use fallback
+    if len(all_courses) < 3:
+        print("Scraping returned few results, using fallback courses")
+        for course in FALLBACK_COURSES:
+            if course['url'] not in seen_urls:
+                all_courses.append(course)
+                seen_urls.add(course['url'])
+
+    return all_courses[:limit]
+
+
+def format_courses_for_model(courses: List[Dict]) -> str:
+    """
+    Format courses as a string for the AI model to select from.
+
+    Args:
+        courses: List of course dictionaries
+
+    Returns:
+        Formatted string describing all courses
+    """
+    if not courses:
+        return "No courses found."
+
+    formatted = "Available courses from Coursera:\n\n"
+
+    for i, course in enumerate(courses, 1):
+        formatted += f"{i}. **{course.get('name', 'Unknown')}**\n"
+        formatted += f"   Provider: {course.get('provider', 'Coursera')}\n"
+        formatted += f"   Level: {course.get('difficulty', 'Beginner')}\n"
+        formatted += f"   Duration: {course.get('duration', 'Self-paced')}\n"
+        formatted += f"   URL: {course.get('url', '')}\n"
+        if course.get('description'):
+            formatted += f"   Description: {course.get('description')}\n"
+        formatted += "\n"
+
+    return formatted

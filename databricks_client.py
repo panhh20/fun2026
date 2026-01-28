@@ -3,8 +3,9 @@
 import os
 import json
 import requests
-from typing import Optional
+from typing import Optional, List, Dict
 import streamlit as st
+from coursera_client import get_courses_for_interests, format_courses_for_model
 
 # =============================================================================
 # DATABRICKS CONFIGURATION
@@ -32,43 +33,54 @@ class DatabricksClient:
         """Check if the client is properly configured."""
         return bool(self.workspace_url and self.token and self.endpoint_name)
 
-    def _build_prompt(self, user_profile: dict) -> str:
+    def _build_prompt(self, user_profile: dict, available_courses: str = "") -> str:
         """
-        Build a prompt for the RAG model based on user profile.
+        Build a prompt for the RAG model based on user profile and available courses.
 
         Args:
             user_profile: Dictionary containing user skills, experience, and goals
+            available_courses: Formatted string of courses scraped from Coursera
 
         Returns:
             Formatted prompt string
         """
-        skills_text = ", ".join(user_profile.get("skills", []))
+        skills_text = user_profile.get("skills_text", ", ".join(user_profile.get("skills", [])))
         interests_text = ", ".join(user_profile.get("interests", []))
         experience_level = user_profile.get("experience_level", "Intermediate")
         goals = user_profile.get("goals", "")
         project_interests = user_profile.get("project_interests", "")
 
-        prompt = f"""Based on the following creative professional's profile, recommend relevant media/animation/film courses and mentors:
+        prompt = f"""Based on the following creative professional's profile, select the most suitable courses and provide mentor recommendations:
 
 **User Profile:**
 - Interest Areas: {interests_text}
-- Skills: {skills_text}
+- Current Skills: {skills_text}
 - Experience Level: {experience_level}
 - Career Goals: {goals}
 - What they want to create: {project_interests}
 
-Please provide:
-1. **Top 5 Course Recommendations**: Include course name, description, difficulty level, duration, and why it's relevant to their interests. Focus on animation, VFX, filmmaking, motion graphics, and related creative fields.
-2. **Top 3 Mentor Matches**: Include mentor name, title, expertise areas, and why they would be a good match for this creative professional.
-3. **Learning Path Suggestion**: A recommended sequence of learning topics to help them achieve their creative goals.
+**Available Courses from Coursera:**
+{available_courses}
 
-Format the response in a structured way with clear sections."""
+**Your Task:**
+1. **Select the TOP 5 most suitable courses** from the available courses above that best match this user's profile, interests, and goals. For each selected course, explain WHY it's a good fit for this user.
+
+2. **Recommend 3 Mentor profiles** (you can create fictional but realistic mentor profiles) that would be ideal matches for this user. Include:
+   - Name and title
+   - Areas of expertise
+   - Years of experience
+   - Why they're a good match
+
+3. **Create a Learning Path** with 5 steps tailored to help this user achieve their creative goals.
+
+Format your response clearly with sections for Courses, Mentors, and Learning Path."""
 
         return prompt
 
     def get_recommendations(self, user_profile: dict) -> dict:
         """
         Get course and mentor recommendations from Databricks RAG model.
+        First scrapes Coursera for relevant courses, then asks the model to select the best ones.
 
         Args:
             user_profile: Dictionary containing user skills, experience, and goals
@@ -83,7 +95,18 @@ Format the response in a structured way with clear sections."""
                 "recommendations": None
             }
 
-        prompt = self._build_prompt(user_profile)
+        # Scrape Coursera for relevant courses based on user interests
+        interests = user_profile.get("interests", [])
+        skills_text = user_profile.get("skills_text", "")
+        scraped_courses = get_courses_for_interests(interests, skills_text, limit=10)
+
+        # Format courses for the model
+        courses_text = format_courses_for_model(scraped_courses)
+
+        # Store scraped courses for later use in rendering
+        self._scraped_courses = scraped_courses
+
+        prompt = self._build_prompt(user_profile, courses_text)
 
         # Build the API URL
         api_url = f"{self.workspace_url}/serving-endpoints/{self.endpoint_name}/invocations"
@@ -122,6 +145,7 @@ Format the response in a structured way with clear sections."""
                         "success": True,
                         "error": None,
                         "recommendations": content,
+                        "scraped_courses": scraped_courses,
                         "raw_response": result
                     }
                 else:
@@ -129,6 +153,7 @@ Format the response in a structured way with clear sections."""
                         "success": True,
                         "error": None,
                         "recommendations": str(result),
+                        "scraped_courses": scraped_courses,
                         "raw_response": result
                     }
             else:
