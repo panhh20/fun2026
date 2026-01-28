@@ -4,9 +4,6 @@ import streamlit as st
 import os
 from config import COLORS, SKILLS_CATEGORIES, EXPERIENCE_LEVELS, APP_CONFIG, INTEREST_AREAS
 from auth import is_authenticated, render_login_page, logout, get_current_user
-
-# Logo path
-LOGO_PATH = os.path.join(os.path.dirname(__file__), "assets", "logo.png")
 from databricks_client import (
     DatabricksClient,
     get_mock_recommendations,
@@ -14,13 +11,10 @@ from databricks_client import (
 )
 from coursera_client import get_courses_for_interests
 
-# Page configuration
-st.set_page_config(
-    page_title=APP_CONFIG["title"],
-    page_icon=APP_CONFIG["page_icon"],
-    layout=APP_CONFIG["layout"],
-    initial_sidebar_state="expanded"
-)
+
+def get_logo_path():
+    """Get the logo path."""
+    return os.path.join(os.path.dirname(__file__), "assets", "logo.png")
 
 
 def apply_global_styles():
@@ -245,10 +239,12 @@ def apply_global_styles():
 
 def render_sidebar():
     """Render the sidebar with user info and logout."""
+    logo_path = get_logo_path()
+
     with st.sidebar:
         # Show logo if it exists
-        if os.path.exists(LOGO_PATH):
-            st.image(LOGO_PATH, use_column_width=True)
+        if os.path.exists(logo_path):
+            st.image(logo_path, use_column_width=True)
         else:
             st.markdown(f"""
                 <h2 style='color: {COLORS["white"]}; text-align: center;'>
@@ -307,7 +303,7 @@ def render_skills_form():
         st.session_state.selected_interests = []
 
     # Section 1: Interest Areas (Bubbles)
-    st.markdown(f"<h3 class='section-header'>What areas interest you?</h3>", unsafe_allow_html=True)
+    st.markdown("<h3 class='section-header'>What areas interest you?</h3>", unsafe_allow_html=True)
     st.markdown("<p style='color: #556443;'>Click to select your areas of interest</p>", unsafe_allow_html=True)
 
     # Create columns for interest bubbles
@@ -335,7 +331,7 @@ def render_skills_form():
     st.markdown("<br>", unsafe_allow_html=True)
 
     # Section 2: Skills (Text inputs)
-    st.markdown(f"<h3 class='section-header'>Tell us about your skills</h3>", unsafe_allow_html=True)
+    st.markdown("<h3 class='section-header'>Tell us about your skills</h3>", unsafe_allow_html=True)
 
     col1, col2 = st.columns(2)
 
@@ -375,7 +371,7 @@ def render_skills_form():
     col1, col2 = st.columns(2)
 
     with col1:
-        st.markdown(f"<h3 class='section-header'>Your Experience</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 class='section-header'>Your Experience</h3>", unsafe_allow_html=True)
 
         # Experience level slider
         experience_value = st.slider(
@@ -402,7 +398,7 @@ def render_skills_form():
         )
 
     with col2:
-        st.markdown(f"<h3 class='section-header'>Your Goals</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 class='section-header'>Your Goals</h3>", unsafe_allow_html=True)
 
         # Career goals
         goals = st.text_area(
@@ -461,7 +457,7 @@ def render_skills_form():
             st.rerun()
 
 
-def render_recommendations(client: DatabricksClient):
+def render_recommendations(client):
     """Render the recommendations page."""
     st.markdown("""
         <div class="main-header">
@@ -497,13 +493,13 @@ def render_recommendations(client: DatabricksClient):
             # Use Databricks RAG
             result = client.get_recommendations(user_profile)
             if result["success"]:
-                st.markdown(f"""
+                st.markdown("""
                     <div class="info-box">
                         Recommendations powered by Databricks RAG
                     </div>
                 """, unsafe_allow_html=True)
                 # Display raw recommendations from RAG
-                st.markdown(f"<h3 class='section-header'>AI-Generated Recommendations</h3>", unsafe_allow_html=True)
+                st.markdown("<h3 class='section-header'>AI-Generated Recommendations</h3>", unsafe_allow_html=True)
                 st.markdown(result["recommendations"])
             else:
                 st.error(f"Error getting recommendations: {result['error']}")
@@ -513,7 +509,7 @@ def render_recommendations(client: DatabricksClient):
         else:
             # Use mock recommendations
             result = get_mock_recommendations(user_profile)
-            st.markdown(f"""
+            st.markdown("""
                 <div class="info-box">
                     Using demo recommendations. Configure Databricks in the sidebar for personalized AI recommendations.
                 </div>
@@ -529,7 +525,7 @@ def render_recommendations(client: DatabricksClient):
             st.rerun()
 
 
-def render_mock_recommendations(result: dict):
+def render_mock_recommendations(result):
     """Render the mock recommendations in a structured format."""
     user_profile = st.session_state.get('user_profile', {})
 
@@ -539,7 +535,7 @@ def render_mock_recommendations(result: dict):
     coursera_courses = get_courses_for_interests(interests, skills_text, limit=5)
 
     # Courses section
-    st.markdown(f"<h3 class='section-header'>Recommended Courses from Coursera</h3>", unsafe_allow_html=True)
+    st.markdown("<h3 class='section-header'>Recommended Courses from Coursera</h3>", unsafe_allow_html=True)
 
     if coursera_courses:
         for course in coursera_courses:
@@ -575,25 +571,26 @@ def render_mock_recommendations(result: dict):
             """, unsafe_allow_html=True)
 
     # Mentors section
-    st.markdown(f"<h3 class='section-header'>Recommended Mentors</h3>", unsafe_allow_html=True)
+    st.markdown("<h3 class='section-header'>Recommended Mentors</h3>", unsafe_allow_html=True)
 
     mentors = result.get('mentors', [])
-    cols = st.columns(len(mentors) if mentors else 1)
-    for idx, mentor in enumerate(mentors):
-        with cols[idx]:
-            expertise_tags = "".join([f'<span class="skill-tag">{e}</span>' for e in mentor['expertise']])
-            st.markdown(f"""
-                <div class="mentor-card">
-                    <h4>{mentor['name']}</h4>
-                    <p><strong>{mentor['title']}</strong></p>
-                    <p>{mentor['experience']} experience</p>
-                    <p>{expertise_tags}</p>
-                    <p><em>{mentor['match_reason']}</em></p>
-                </div>
-            """, unsafe_allow_html=True)
+    if mentors:
+        cols = st.columns(len(mentors))
+        for idx, mentor in enumerate(mentors):
+            with cols[idx]:
+                expertise_tags = "".join([f'<span class="skill-tag">{e}</span>' for e in mentor['expertise']])
+                st.markdown(f"""
+                    <div class="mentor-card">
+                        <h4>{mentor['name']}</h4>
+                        <p><strong>{mentor['title']}</strong></p>
+                        <p>{mentor['experience']} experience</p>
+                        <p>{expertise_tags}</p>
+                        <p><em>{mentor['match_reason']}</em></p>
+                    </div>
+                """, unsafe_allow_html=True)
 
     # Learning path section
-    st.markdown(f"<h3 class='section-header'>Suggested Learning Path</h3>", unsafe_allow_html=True)
+    st.markdown("<h3 class='section-header'>Suggested Learning Path</h3>", unsafe_allow_html=True)
 
     learning_path = result.get('learning_path', [])
     path_html = "<ol>"
@@ -612,6 +609,14 @@ def render_mock_recommendations(result: dict):
 
 def main():
     """Main application entry point."""
+    # Page configuration - must be first Streamlit command
+    st.set_page_config(
+        page_title=APP_CONFIG["title"],
+        page_icon=APP_CONFIG["page_icon"],
+        layout=APP_CONFIG["layout"],
+        initial_sidebar_state="expanded"
+    )
+
     apply_global_styles()
 
     # Check authentication
