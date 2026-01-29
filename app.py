@@ -630,11 +630,6 @@ def render_recommendations(client):
         else:
             # Use mock recommendations
             result = get_mock_recommendations(user_profile)
-            st.markdown("""
-                <div class="info-box">
-                    Using demo recommendations. Configure Databricks in the sidebar for personalized AI recommendations.
-                </div>
-            """, unsafe_allow_html=True)
             render_mock_recommendations(result)
 
     # Navigation buttons
@@ -708,7 +703,7 @@ def render_mock_recommendations(result):
                 else:
                     if st.button("Add to Tracker", key=f"add_course_{idx}", use_container_width=True):
                         if add_course_to_tracker(course):
-                            st.toast(f"Added '{course['name'][:30]}...' to your tracker!")
+                            st.toast("Course added to your tracker!")
     else:
         # Fallback to mock courses if no Coursera courses found
         courses = result.get('courses', [])
@@ -752,7 +747,7 @@ def render_mock_recommendations(result):
                 else:
                     if st.button("Add to Tracker", key=f"add_mock_{idx}", use_container_width=True):
                         if add_course_to_tracker(mock_course):
-                            st.toast(f"Added '{course['name'][:30]}...' to your tracker!")
+                            st.toast("Course added to your tracker!")
 
     # Mentors section
     st.markdown("<h3 class='section-header'>Recommended Mentors</h3>", unsafe_allow_html=True)
@@ -898,17 +893,25 @@ def render_attendance_tab():
     weekly_classes = records.get('weekly_classes', [])
     mentoring_sessions = records.get('mentoring_sessions', [])
 
+    # Colors from palette (no red)
+    color_present = "#28a745"
+    color_present_bg = "#d4edda"
+    color_present_text = "#155724"
+    color_late = "#856404"
+    color_late_bg = "#fff3cd"
+    color_absent = COLORS['mid_accent']  # Dark green instead of red
+    color_absent_bg = COLORS['light_accent']  # Light sage instead of red
+    color_absent_text = COLORS['primary_dark']  # Dark olive instead of red
+
     # Calculate summary stats
     total_weekly = len(weekly_classes)
     weekly_present = sum(1 for c in weekly_classes if c['status'] == 'present')
     weekly_late = sum(1 for c in weekly_classes if c['status'] == 'late')
     weekly_absent = sum(1 for c in weekly_classes if c['status'] == 'absent')
-    weekly_rate = ((weekly_present + weekly_late) / total_weekly * 100) if total_weekly > 0 else 0
 
     total_mentoring = len(mentoring_sessions)
     mentoring_present = sum(1 for s in mentoring_sessions if s['status'] == 'present')
     mentoring_absent = sum(1 for s in mentoring_sessions if s['status'] == 'absent')
-    mentoring_rate = (mentoring_present / total_mentoring * 100) if total_mentoring > 0 else 0
 
     overall_total = total_weekly + total_mentoring
     overall_attended = weekly_present + weekly_late + mentoring_present
@@ -920,37 +923,36 @@ def render_attendance_tab():
     col1, col2, col3, col4 = st.columns(4)
 
     with col1:
-        rate_color = '#28a745' if overall_rate >= 80 else '#ffc107' if overall_rate >= 60 else '#dc3545'
-        st.markdown(f"""
-            <div class="stats-card">
-                <div class="stats-number" style="color: {rate_color};">{overall_rate:.0f}%</div>
-                <div class="stats-label">Overall Attendance</div>
-            </div>
-        """, unsafe_allow_html=True)
+        if overall_rate >= 80:
+            rate_color = color_present
+        elif overall_rate >= 60:
+            rate_color = color_late
+        else:
+            rate_color = color_absent
+        rate_display = f"{overall_rate:.0f}"
+        st.markdown(
+            f'<div class="stats-card"><div class="stats-number" style="color: {rate_color};">{rate_display}%</div><div class="stats-label">Overall Attendance</div></div>',
+            unsafe_allow_html=True
+        )
 
     with col2:
-        st.markdown(f"""
-            <div class="stats-card">
-                <div class="stats-number">{overall_attended}</div>
-                <div class="stats-label">Sessions Attended</div>
-            </div>
-        """, unsafe_allow_html=True)
+        st.markdown(
+            f'<div class="stats-card"><div class="stats-number">{overall_attended}</div><div class="stats-label">Sessions Attended</div></div>',
+            unsafe_allow_html=True
+        )
 
     with col3:
-        st.markdown(f"""
-            <div class="stats-card">
-                <div class="stats-number">{weekly_absent + mentoring_absent}</div>
-                <div class="stats-label">Sessions Missed</div>
-            </div>
-        """, unsafe_allow_html=True)
+        missed_total = weekly_absent + mentoring_absent
+        st.markdown(
+            f'<div class="stats-card"><div class="stats-number">{missed_total}</div><div class="stats-label">Sessions Missed</div></div>',
+            unsafe_allow_html=True
+        )
 
     with col4:
-        st.markdown(f"""
-            <div class="stats-card">
-                <div class="stats-number">{overall_total}</div>
-                <div class="stats-label">Total Sessions</div>
-            </div>
-        """, unsafe_allow_html=True)
+        st.markdown(
+            f'<div class="stats-card"><div class="stats-number">{overall_total}</div><div class="stats-label">Total Sessions</div></div>',
+            unsafe_allow_html=True
+        )
 
     st.markdown("<br>", unsafe_allow_html=True)
 
@@ -960,23 +962,20 @@ def render_attendance_tab():
     # Weekly class stats
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.markdown(f"""
-            <div style="background-color: #d4edda; padding: 0.75rem; border-radius: 5px; text-align: center;">
-                <strong style="color: #155724;">{weekly_present} Present</strong>
-            </div>
-        """, unsafe_allow_html=True)
+        st.markdown(
+            f'<div style="background-color: {color_present_bg}; padding: 0.75rem; border-radius: 5px; text-align: center;"><strong style="color: {color_present_text};">{weekly_present} Present</strong></div>',
+            unsafe_allow_html=True
+        )
     with col2:
-        st.markdown(f"""
-            <div style="background-color: #fff3cd; padding: 0.75rem; border-radius: 5px; text-align: center;">
-                <strong style="color: #856404;">{weekly_late} Late</strong>
-            </div>
-        """, unsafe_allow_html=True)
+        st.markdown(
+            f'<div style="background-color: {color_late_bg}; padding: 0.75rem; border-radius: 5px; text-align: center;"><strong style="color: {color_late};">{weekly_late} Late</strong></div>',
+            unsafe_allow_html=True
+        )
     with col3:
-        st.markdown(f"""
-            <div style="background-color: #f8d7da; padding: 0.75rem; border-radius: 5px; text-align: center;">
-                <strong style="color: #721c24;">{weekly_absent} Absent</strong>
-            </div>
-        """, unsafe_allow_html=True)
+        st.markdown(
+            f'<div style="background-color: {color_absent_bg}; padding: 0.75rem; border-radius: 5px; text-align: center;"><strong style="color: {color_absent_text};">{weekly_absent} Absent</strong></div>',
+            unsafe_allow_html=True
+        )
 
     st.markdown("<br>", unsafe_allow_html=True)
 
@@ -984,24 +983,33 @@ def render_attendance_tab():
     if weekly_classes:
         for record in weekly_classes:
             status = record['status']
-            status_color = '#28a745' if status == 'present' else '#ffc107' if status == 'late' else '#dc3545'
-            status_bg = '#d4edda' if status == 'present' else '#fff3cd' if status == 'late' else '#f8d7da'
-            status_text = 'Present' if status == 'present' else 'Late' if status == 'late' else 'Absent'
+            if status == 'present':
+                s_color = color_present
+                s_bg = color_present_bg
+                s_text = 'Present'
+            elif status == 'late':
+                s_color = color_late
+                s_bg = color_late_bg
+                s_text = 'Late'
+            else:
+                s_color = color_absent
+                s_bg = color_absent_bg
+                s_text = 'Absent'
 
-            notes_html = f"<span style='color: {COLORS['secondary']}; font-size: 0.85rem;'> - {record['notes']}</span>" if record.get('notes') else ""
+            notes_part = ""
+            if record.get('notes'):
+                notes_part = f' - <span style="color: {COLORS["secondary"]}; font-size: 0.85rem;">{record["notes"]}</span>'
 
-            st.markdown(f"""
-                <div style="display: flex; align-items: center; padding: 0.75rem; background-color: {COLORS['white']}; border-radius: 5px; margin-bottom: 0.5rem; border-left: 4px solid {status_color};">
-                    <div style="flex: 1;">
-                        <strong style="color: {COLORS['primary_dark']};">{record['date']}</strong>
-                        <span style="color: {COLORS['text_dark']}; margin-left: 1rem;">{record['class_name']}</span>
-                        {notes_html}
-                    </div>
-                    <div style="background-color: {status_bg}; padding: 0.25rem 0.75rem; border-radius: 15px;">
-                        <span style="color: {status_color}; font-weight: 500; font-size: 0.85rem;">{status_text}</span>
-                    </div>
+            html = f'''<div style="display: flex; align-items: center; padding: 0.75rem; background-color: {COLORS["white"]}; border-radius: 5px; margin-bottom: 0.5rem; border-left: 4px solid {s_color};">
+                <div style="flex: 1;">
+                    <strong style="color: {COLORS["primary_dark"]};">{record["date"]}</strong>
+                    <span style="color: {COLORS["text_dark"]}; margin-left: 1rem;">{record["class_name"]}</span>{notes_part}
                 </div>
-            """, unsafe_allow_html=True)
+                <div style="background-color: {s_bg}; padding: 0.25rem 0.75rem; border-radius: 15px;">
+                    <span style="color: {s_color}; font-weight: 500; font-size: 0.85rem;">{s_text}</span>
+                </div>
+            </div>'''
+            st.markdown(html, unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
@@ -1011,17 +1019,15 @@ def render_attendance_tab():
     # Mentoring stats
     col1, col2 = st.columns(2)
     with col1:
-        st.markdown(f"""
-            <div style="background-color: #d4edda; padding: 0.75rem; border-radius: 5px; text-align: center;">
-                <strong style="color: #155724;">{mentoring_present} Attended</strong>
-            </div>
-        """, unsafe_allow_html=True)
+        st.markdown(
+            f'<div style="background-color: {color_present_bg}; padding: 0.75rem; border-radius: 5px; text-align: center;"><strong style="color: {color_present_text};">{mentoring_present} Attended</strong></div>',
+            unsafe_allow_html=True
+        )
     with col2:
-        st.markdown(f"""
-            <div style="background-color: #f8d7da; padding: 0.75rem; border-radius: 5px; text-align: center;">
-                <strong style="color: #721c24;">{mentoring_absent} Missed</strong>
-            </div>
-        """, unsafe_allow_html=True)
+        st.markdown(
+            f'<div style="background-color: {color_absent_bg}; padding: 0.75rem; border-radius: 5px; text-align: center;"><strong style="color: {color_absent_text};">{mentoring_absent} Missed</strong></div>',
+            unsafe_allow_html=True
+        )
 
     st.markdown("<br>", unsafe_allow_html=True)
 
@@ -1029,26 +1035,33 @@ def render_attendance_tab():
     if mentoring_sessions:
         for record in mentoring_sessions:
             status = record['status']
-            status_color = '#28a745' if status == 'present' else '#dc3545'
-            status_bg = '#d4edda' if status == 'present' else '#f8d7da'
-            status_text = 'Attended' if status == 'present' else 'Missed'
+            if status == 'present':
+                s_color = color_present
+                s_bg = color_present_bg
+                s_text = 'Attended'
+            else:
+                s_color = color_absent
+                s_bg = color_absent_bg
+                s_text = 'Missed'
 
-            duration_html = f"<span style='color: {COLORS['accent']};'>({record['duration']})</span>" if record.get('duration') and record['duration'] != '0 min' else ""
-            notes_html = f"<span style='color: {COLORS['secondary']}; font-size: 0.85rem;'> - {record['notes']}</span>" if record.get('notes') else ""
+            duration_part = ""
+            if record.get('duration') and record['duration'] != '0 min':
+                duration_part = f' <span style="color: {COLORS["accent"]};">({record["duration"]})</span>'
 
-            st.markdown(f"""
-                <div style="display: flex; align-items: center; padding: 0.75rem; background-color: {COLORS['white']}; border-radius: 5px; margin-bottom: 0.5rem; border-left: 4px solid {status_color};">
-                    <div style="flex: 1;">
-                        <strong style="color: {COLORS['primary_dark']};">{record['date']}</strong>
-                        <span style="color: {COLORS['text_dark']}; margin-left: 1rem;">with {record['mentor']}</span>
-                        {duration_html}
-                        {notes_html}
-                    </div>
-                    <div style="background-color: {status_bg}; padding: 0.25rem 0.75rem; border-radius: 15px;">
-                        <span style="color: {status_color}; font-weight: 500; font-size: 0.85rem;">{status_text}</span>
-                    </div>
+            notes_part = ""
+            if record.get('notes'):
+                notes_part = f' - <span style="color: {COLORS["secondary"]}; font-size: 0.85rem;">{record["notes"]}</span>'
+
+            html = f'''<div style="display: flex; align-items: center; padding: 0.75rem; background-color: {COLORS["white"]}; border-radius: 5px; margin-bottom: 0.5rem; border-left: 4px solid {s_color};">
+                <div style="flex: 1;">
+                    <strong style="color: {COLORS["primary_dark"]};">{record["date"]}</strong>
+                    <span style="color: {COLORS["text_dark"]}; margin-left: 1rem;">with {record["mentor"]}</span>{duration_part}{notes_part}
                 </div>
-            """, unsafe_allow_html=True)
+                <div style="background-color: {s_bg}; padding: 0.25rem 0.75rem; border-radius: 15px;">
+                    <span style="color: {s_color}; font-weight: 500; font-size: 0.85rem;">{s_text}</span>
+                </div>
+            </div>'''
+            st.markdown(html, unsafe_allow_html=True)
 
     # Missed Classes Summary
     missed_weekly = [c for c in weekly_classes if c['status'] == 'absent']
@@ -1058,24 +1071,27 @@ def render_attendance_tab():
         st.markdown("<br>", unsafe_allow_html=True)
         st.markdown("<h3 class='section-header'>Missed Sessions Summary</h3>", unsafe_allow_html=True)
 
-        st.markdown(f"""
-            <div style="background-color: #f8d7da; padding: 1rem; border-radius: 5px; border-left: 4px solid #dc3545;">
-                <strong style="color: #721c24;">Attention Required</strong>
-                <p style="color: {COLORS['text_dark']}; margin: 0.5rem 0 0 0;">
-                    You have missed {len(missed_weekly)} weekly class(es) and {len(missed_mentoring)} mentoring session(s).
-                    Please reach out to your mentor if you need to discuss make-up options.
-                </p>
-            </div>
-        """, unsafe_allow_html=True)
+        missed_w_count = len(missed_weekly)
+        missed_m_count = len(missed_mentoring)
+        attention_html = f'''<div style="background-color: {color_absent_bg}; padding: 1rem; border-radius: 5px; border-left: 4px solid {color_absent};">
+            <strong style="color: {color_absent_text};">Attention Required</strong>
+            <p style="color: {COLORS["text_dark"]}; margin: 0.5rem 0 0 0;">
+                You have missed {missed_w_count} weekly class(es) and {missed_m_count} mentoring session(s).
+                Please reach out to your mentor if you need to discuss make-up options.
+            </p>
+        </div>'''
+        st.markdown(attention_html, unsafe_allow_html=True)
 
         if missed_weekly:
-            st.markdown("<br><strong>Missed Weekly Classes:</strong>", unsafe_allow_html=True)
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.markdown("**Missed Weekly Classes:**")
             for record in missed_weekly:
                 reason = f" - {record['notes']}" if record.get('notes') else ""
                 st.markdown(f"- {record['date']}: {record['class_name']}{reason}")
 
         if missed_mentoring:
-            st.markdown("<br><strong>Missed Mentoring Sessions:</strong>", unsafe_allow_html=True)
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.markdown("**Missed Mentoring Sessions:**")
             for record in missed_mentoring:
                 reason = f" - {record['notes']}" if record.get('notes') else ""
                 st.markdown(f"- {record['date']}: Session with {record['mentor']}{reason}")
@@ -1294,12 +1310,12 @@ def render_mentor_reviews_tab():
         review_date = review.get('date', '')
         mentor_name = review.get('mentor_name', 'Mentor')
 
-        # Review type badge color
+        # Review type badge color (no red - using dark greens)
         type_colors = {
             'Weekly Review': COLORS['primary_dark'],
             'Assignment Review': COLORS['accent'],
             'Behavioral Note': COLORS['mid_accent'],
-            'Academic Concern': '#dc3545',
+            'Academic Concern': COLORS['mid_accent'],
             'Positive Recognition': '#28a745'
         }
         badge_color = type_colors.get(review_type, COLORS['secondary'])
