@@ -387,6 +387,13 @@ def render_sidebar():
                 st.session_state.current_page = "profile"
                 st.rerun()
 
+        # Playground button
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            if st.button("Playground", key="playground_btn", use_container_width=True):
+                st.session_state.current_page = "playground"
+                st.rerun()
+
         # Spacer to push logout to bottom
         st.markdown("<div style='flex-grow: 1; min-height: 100px;'></div>", unsafe_allow_html=True)
 
@@ -2070,6 +2077,54 @@ def render_jobs_page():
             st.rerun()
 
 
+def render_playground_page():
+    """Render the Playground page with creative tools and resources."""
+    st.markdown("""
+        <div class="main-header">
+            <h1>Playground</h1>
+            <p>Explore creative tools and resources to enhance your learning journey</p>
+        </div>
+    """, unsafe_allow_html=True)
+
+    # ==========================================================================
+    # PASTE YOUR PLAYGROUND CONTENT BELOW THIS LINE
+    # You can add:
+    # - Info boxes using st.markdown() with HTML
+    # - Tabs using st.tabs()
+    # - Tool links and descriptions
+    # - Any other Streamlit components
+    # ==========================================================================
+
+    # Placeholder content - Replace with your own
+    st.markdown(f"""
+        <div class="info-box">
+            <p>Welcome to the Playground! This is where you can explore various creative tools and resources.</p>
+        </div>
+    """, unsafe_allow_html=True)
+
+    # Example tab structure - Replace with your content
+    # tab1, tab2, tab3 = st.tabs(["Tab 1", "Tab 2", "Tab 3"])
+    # with tab1:
+    #     st.write("Content for Tab 1")
+    # with tab2:
+    #     st.write("Content for Tab 2")
+    # with tab3:
+    #     st.write("Content for Tab 3")
+
+    # ==========================================================================
+    # END OF PLAYGROUND CONTENT SECTION
+    # ==========================================================================
+
+    # Navigation button
+    st.markdown("<br>", unsafe_allow_html=True)
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        if st.button("Back to Home", use_container_width=True):
+            st.session_state.current_page = "main"
+            st.session_state.form_submitted = False
+            st.rerun()
+
+
 def main():
     """Main application entry point."""
     # Page configuration - must be first Streamlit command
@@ -2102,6 +2157,8 @@ def main():
         render_profile_page()
     elif st.session_state.current_page == "jobs":
         render_jobs_page()
+    elif st.session_state.current_page == "playground":
+        render_playground_page()
     elif st.session_state.get('form_submitted', False):
         render_recommendations(client)
     else:
