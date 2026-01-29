@@ -420,8 +420,9 @@ def render_sidebar():
             /* Style for View Profile and Playground buttons */
             [data-testid="stSidebar"] button[kind="secondary"] {{
                 background-color: {COLORS['light_accent']} !important;
-                color: {COLORS['primary_dark']} !important;
+                color: #1a2610 !important;
                 border: none !important;
+                font-weight: 600 !important;
             }}
             [data-testid="stSidebar"] button[kind="secondary"]:hover {{
                 background-color: {COLORS['secondary']} !important;
@@ -793,7 +794,7 @@ def render_mock_recommendations(result):
             if youtube_img:
                 video_image = f'<img src="{youtube_img}" class="course-image" alt="YouTube Video">'
             else:
-                video_image = f'<div class="course-image-placeholder" style="background-color: #c4302b;">&#9658;</div>'
+                video_image = f'<div class="course-image-placeholder" style="background-color: {COLORS["primary_dark"]}; color: {COLORS["white"]};">&#9658;</div>'
 
             # Tags
             tags_html = " ".join([
@@ -801,7 +802,7 @@ def render_mock_recommendations(result):
                 for tag in video.get("tags", [])[:3]
             ])
 
-            html = f'''<div style="background-color: {COLORS["white"]}; padding: 1rem; border-radius: 10px; margin-bottom: 0.75rem; border-left: 4px solid #c4302b; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            html = f'''<div style="background-color: {COLORS["white"]}; padding: 1rem; border-radius: 10px; margin-bottom: 0.75rem; border-left: 4px solid {COLORS["primary_dark"]}; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                 <div style="display: flex; gap: 1rem;">
                     <div style="flex-shrink: 0; width: 180px;">
                         {video_image}
@@ -815,7 +816,7 @@ def render_mock_recommendations(result):
                         <div>{tags_html}</div>
                     </div>
                     <div style="flex-shrink: 0;">
-                        <a href="{video["url"]}" target="_blank" style="display: inline-block; background-color: #c4302b; color: white; padding: 0.5rem 1rem; border-radius: 5px; text-decoration: none; font-size: 0.85rem;">Watch</a>
+                        <a href="{video["url"]}" target="_blank" style="display: inline-block; background-color: {COLORS["primary_dark"]}; color: white; padding: 0.5rem 1rem; border-radius: 5px; text-decoration: none; font-size: 0.85rem;">Watch</a>
                     </div>
                 </div>
             </div>'''
