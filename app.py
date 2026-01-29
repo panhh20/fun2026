@@ -792,9 +792,9 @@ def render_mock_recommendations(result):
         for idx, video in enumerate(youtube_videos):
             # Use YouTube background image
             if youtube_img:
-                video_image = f'<img src="{youtube_img}" class="course-image" alt="YouTube Video">'
+                video_image = f'<img src="{youtube_img}" style="width: 100%; height: 68px; object-fit: cover; border-radius: 4px;" alt="YouTube Video">'
             else:
-                video_image = f'<div class="course-image-placeholder" style="background-color: {COLORS["primary_dark"]}; color: {COLORS["white"]};">&#9658;</div>'
+                video_image = f'<div style="width: 100%; height: 68px; background-color: {COLORS["primary_dark"]}; color: {COLORS["white"]}; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">&#9658;</div>'
 
             # Tags
             tags_html = " ".join([
@@ -802,21 +802,21 @@ def render_mock_recommendations(result):
                 for tag in video.get("tags", [])[:3]
             ])
 
-            html = f'''<div style="background-color: {COLORS["white"]}; padding: 1rem; border-radius: 10px; margin-bottom: 0.75rem; border-left: 4px solid {COLORS["primary_dark"]}; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                <div style="display: flex; gap: 1rem;">
-                    <div style="flex-shrink: 0; width: 180px;">
+            html = f'''<div style="background-color: {COLORS["white"]}; padding: 0.65rem 0.85rem; border-radius: 8px; margin-bottom: 0.5rem; border-left: 3px solid {COLORS["primary_dark"]}; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+                <div style="display: flex; gap: 0.75rem; align-items: center;">
+                    <div style="flex-shrink: 0; width: 120px;">
                         {video_image}
                     </div>
-                    <div style="flex: 1;">
-                        <h4 style="color: {COLORS["primary_dark"]}; margin: 0 0 0.25rem 0;">
+                    <div style="flex: 1; min-width: 0;">
+                        <h4 style="color: {COLORS["primary_dark"]}; margin: 0 0 0.15rem 0; font-size: 0.95rem;">
                             <a href="{video["url"]}" target="_blank" style="color: {COLORS["primary_dark"]}; text-decoration: none;">{video["title"]}</a>
                         </h4>
-                        <p style="color: {COLORS["secondary"]}; margin: 0 0 0.25rem 0; font-size: 0.85rem;">{video["channel"]} | {video.get("duration", "")} | {video.get("views", "")}</p>
-                        <p style="color: {COLORS["text_dark"]}; margin: 0 0 0.5rem 0; font-size: 0.9rem;">{video["description"]}</p>
+                        <p style="color: {COLORS["secondary"]}; margin: 0 0 0.15rem 0; font-size: 0.75rem;">{video["channel"]} | {video.get("duration", "")} | {video.get("views", "")}</p>
+                        <p style="color: {COLORS["text_dark"]}; margin: 0 0 0.25rem 0; font-size: 0.8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{video["description"]}</p>
                         <div>{tags_html}</div>
                     </div>
                     <div style="flex-shrink: 0;">
-                        <a href="{video["url"]}" target="_blank" style="display: inline-block; background-color: {COLORS["primary_dark"]}; color: white; padding: 0.5rem 1rem; border-radius: 5px; text-decoration: none; font-size: 0.85rem;">Watch</a>
+                        <a href="{video["url"]}" target="_blank" style="display: inline-block; background-color: {COLORS["primary_dark"]}; color: white; padding: 0.35rem 0.75rem; border-radius: 4px; text-decoration: none; font-size: 0.8rem;">Watch</a>
                     </div>
                 </div>
             </div>'''
