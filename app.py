@@ -641,11 +641,13 @@ def render_recommendations(client):
             st.session_state.current_page = "main"
             st.rerun()
     with col2:
-        pass
+        if st.button("Find Jobs", use_container_width=True, type="primary"):
+            st.session_state.current_page = "jobs"
+            st.rerun()
     with col3:
         tracked_count = len(st.session_state.get('tracked_courses', {}))
         completed_count = len(st.session_state.get('completed_courses', {}))
-        if st.button(f"My Courses ({tracked_count + completed_count})", use_container_width=True):
+        if st.button(f"My Profile ({tracked_count + completed_count})", use_container_width=True):
             st.session_state.current_page = "profile"
             st.rerun()
 
@@ -1439,6 +1441,29 @@ def init_mentor_reviews():
             }
         ]
 
+    # Initialize career path suggestions
+    if 'career_path' not in st.session_state:
+        st.session_state.career_path = {
+            'recommended_next_steps': [
+                {'step': 'Complete Advanced Motion Graphics course', 'priority': 'High', 'status': 'in_progress'},
+                {'step': 'Build a showreel with 5-7 best projects', 'priority': 'High', 'status': 'not_started'},
+                {'step': 'Create 2 personal projects for portfolio', 'priority': 'Medium', 'status': 'in_progress'},
+                {'step': 'Attend local creative industry meetups', 'priority': 'Medium', 'status': 'not_started'},
+                {'step': 'Set up professional LinkedIn profile', 'priority': 'High', 'status': 'completed'},
+                {'step': 'Apply for internships at motion design studios', 'priority': 'Medium', 'status': 'not_started'},
+            ],
+            'skills_to_develop': [
+                {'skill': '3D Camera Animation', 'current_level': 'Beginner', 'target_level': 'Intermediate', 'mentor_notes': 'Focus on smooth camera movements and depth'},
+                {'skill': 'Character Rigging', 'current_level': 'Not Started', 'target_level': 'Beginner', 'mentor_notes': 'Start with simple 2D character rigs'},
+                {'skill': 'Sound Design', 'current_level': 'Beginner', 'target_level': 'Intermediate', 'mentor_notes': 'Learn to sync audio with motion'},
+                {'skill': 'Client Communication', 'current_level': 'Intermediate', 'target_level': 'Advanced', 'mentor_notes': 'Practice presenting work and receiving feedback'},
+                {'skill': 'Project Estimation', 'current_level': 'Beginner', 'target_level': 'Intermediate', 'mentor_notes': 'Learn to break down projects and estimate time'},
+            ],
+            'target_roles': ['Motion Designer', 'Junior Animator', 'Video Editor', 'VFX Artist'],
+            'last_updated': '2026-01-20',
+            'mentor_name': 'Sarah Chen'
+        }
+
 
 def render_courses_tab():
     """Render the courses tracking tab."""
@@ -1672,6 +1697,378 @@ def render_mentor_reviews_tab():
                     </div>
                 """, unsafe_allow_html=True)
 
+    # Career Path Suggestions Section
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("<h3 class='section-header'>Career Path Suggestions</h3>", unsafe_allow_html=True)
+
+    career_path = st.session_state.get('career_path', {})
+
+    if career_path:
+        # Last updated info
+        st.markdown(
+            f'<p style="color: {COLORS["secondary"]}; font-size: 0.85rem;">Last updated: {career_path.get("last_updated", "N/A")} by {career_path.get("mentor_name", "Mentor")}</p>',
+            unsafe_allow_html=True
+        )
+
+        # Target roles
+        if career_path.get('target_roles'):
+            roles_html = " ".join([f'<span style="background-color: {COLORS["primary_dark"]}; color: {COLORS["white"]}; padding: 0.3rem 0.75rem; border-radius: 15px; margin-right: 0.5rem; font-size: 0.85rem;">{role}</span>' for role in career_path['target_roles']])
+            st.markdown(
+                f'<div style="margin-bottom: 1rem;"><strong style="color: {COLORS["primary_dark"]};">Target Roles:</strong> {roles_html}</div>',
+                unsafe_allow_html=True
+            )
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # Two columns layout
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.markdown(
+                f'<h4 style="color: {COLORS["primary_dark"]}; margin-bottom: 1rem;">Recommended Next Steps</h4>',
+                unsafe_allow_html=True
+            )
+
+            next_steps = career_path.get('recommended_next_steps', [])
+            for step in next_steps:
+                status = step.get('status', 'not_started')
+                priority = step.get('priority', 'Medium')
+
+                if status == 'completed':
+                    status_icon = "&#10003;"
+                    status_color = "#28a745"
+                    status_bg = "#d4edda"
+                elif status == 'in_progress':
+                    status_icon = "&#8226;"
+                    status_color = "#856404"
+                    status_bg = "#fff3cd"
+                else:
+                    status_icon = "&#9675;"
+                    status_color = COLORS['secondary']
+                    status_bg = COLORS['light_accent']
+
+                priority_color = COLORS['primary_dark'] if priority == 'High' else COLORS['accent'] if priority == 'Medium' else COLORS['secondary']
+
+                html = f'''<div style="background-color: {COLORS["white"]}; padding: 0.75rem; border-radius: 5px; margin-bottom: 0.5rem; border-left: 4px solid {status_color};">
+                    <div style="display: flex; align-items: center;">
+                        <span style="color: {status_color}; font-size: 1.2rem; margin-right: 0.5rem;">{status_icon}</span>
+                        <span style="color: {COLORS["text_dark"]}; flex: 1;">{step["step"]}</span>
+                        <span style="background-color: {COLORS["light_accent"]}; color: {priority_color}; padding: 0.15rem 0.5rem; border-radius: 10px; font-size: 0.7rem;">{priority}</span>
+                    </div>
+                </div>'''
+                st.markdown(html, unsafe_allow_html=True)
+
+        with col2:
+            st.markdown(
+                f'<h4 style="color: {COLORS["primary_dark"]}; margin-bottom: 1rem;">Skills to Develop</h4>',
+                unsafe_allow_html=True
+            )
+
+            skills = career_path.get('skills_to_develop', [])
+            for skill in skills:
+                current = skill.get('current_level', 'Not Started')
+                target = skill.get('target_level', 'Intermediate')
+                notes = skill.get('mentor_notes', '')
+
+                # Progress indicator
+                levels = ['Not Started', 'Beginner', 'Intermediate', 'Advanced', 'Expert']
+                current_idx = levels.index(current) if current in levels else 0
+                target_idx = levels.index(target) if target in levels else 2
+                progress_pct = (current_idx / max(target_idx, 1)) * 100
+
+                html = f'''<div style="background-color: {COLORS["white"]}; padding: 0.75rem; border-radius: 5px; margin-bottom: 0.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                        <strong style="color: {COLORS["primary_dark"]};">{skill["skill"]}</strong>
+                        <span style="color: {COLORS["secondary"]}; font-size: 0.8rem;">{current} → {target}</span>
+                    </div>
+                    <div style="background-color: {COLORS["light_accent"]}; border-radius: 5px; height: 6px; margin-bottom: 0.25rem;">
+                        <div style="background-color: {COLORS["accent"]}; width: {progress_pct}%; height: 100%; border-radius: 5px;"></div>
+                    </div>
+                    <p style="color: {COLORS["secondary"]}; font-size: 0.8rem; margin: 0;">{notes}</p>
+                </div>'''
+                st.markdown(html, unsafe_allow_html=True)
+    else:
+        st.markdown(
+            '<div class="info-box"><p>No career path suggestions yet. Your mentor will add recommendations during your review sessions.</p></div>',
+            unsafe_allow_html=True
+        )
+
+
+def get_job_search_keywords():
+    """Build job search keywords based on student profile, courses, and mentor feedback."""
+    keywords = []
+
+    # From user profile
+    user_profile = st.session_state.get('user_profile', {})
+    if user_profile.get('interests'):
+        keywords.extend(user_profile['interests'])
+    if user_profile.get('skills_text'):
+        keywords.append(user_profile['skills_text'][:50])
+
+    # From completed courses
+    completed = st.session_state.get('completed_courses', {})
+    for course in completed.values():
+        keywords.append(course.get('name', ''))
+
+    # From career path
+    career_path = st.session_state.get('career_path', {})
+    if career_path.get('target_roles'):
+        keywords.extend(career_path['target_roles'])
+
+    # From skills to develop
+    if career_path.get('skills_to_develop'):
+        for skill in career_path['skills_to_develop']:
+            keywords.append(skill.get('skill', ''))
+
+    return keywords
+
+
+def get_sample_jobs(keywords):
+    """Get sample job listings based on keywords. In production, this would search real job boards."""
+    # Sample jobs that would be returned from a real search
+    all_jobs = [
+        {
+            'title': 'Junior Motion Designer',
+            'company': 'Creative Studios Inc.',
+            'location': 'Los Angeles, CA (Hybrid)',
+            'posted': '2 days ago',
+            'url': 'https://www.linkedin.com/jobs/view/junior-motion-designer',
+            'description': 'Looking for a creative motion designer to join our team. Experience with After Effects and Cinema 4D preferred.',
+            'match_reasons': ['Motion Graphics', 'After Effects'],
+            'salary': '$45,000 - $60,000'
+        },
+        {
+            'title': 'Video Editor',
+            'company': 'Digital Media Agency',
+            'location': 'New York, NY (Remote)',
+            'posted': '1 day ago',
+            'url': 'https://www.linkedin.com/jobs/view/video-editor',
+            'description': 'Edit video content for social media and marketing campaigns. Premiere Pro expertise required.',
+            'match_reasons': ['Video Editing', 'Social Media Content'],
+            'salary': '$40,000 - $55,000'
+        },
+        {
+            'title': 'Junior Animator',
+            'company': 'Animation House',
+            'location': 'Vancouver, BC (On-site)',
+            'posted': '3 days ago',
+            'url': 'https://www.linkedin.com/jobs/view/junior-animator',
+            'description': '2D/3D animation for commercials and short films. Looking for creative storytellers.',
+            'match_reasons': ['Animation', 'Storytelling'],
+            'salary': '$50,000 - $65,000'
+        },
+        {
+            'title': 'VFX Artist Intern',
+            'company': 'Film Production Co.',
+            'location': 'Atlanta, GA (On-site)',
+            'posted': '5 days ago',
+            'url': 'https://www.linkedin.com/jobs/view/vfx-artist-intern',
+            'description': 'Internship opportunity for aspiring VFX artists. Learn compositing and visual effects.',
+            'match_reasons': ['Visual Effects', 'Compositing'],
+            'salary': 'Paid Internship'
+        },
+        {
+            'title': 'Content Creator',
+            'company': 'Social Brand Agency',
+            'location': 'Remote',
+            'posted': '1 day ago',
+            'url': 'https://www.linkedin.com/jobs/view/content-creator',
+            'description': 'Create engaging video content for multiple platforms. TikTok and Instagram experience a plus.',
+            'match_reasons': ['Social Media Content', 'Video Production'],
+            'salary': '$35,000 - $50,000'
+        },
+        {
+            'title': 'Graphic Designer / Video Editor',
+            'company': 'Marketing Firm',
+            'location': 'Chicago, IL (Hybrid)',
+            'posted': '4 days ago',
+            'url': 'https://www.linkedin.com/jobs/view/graphic-designer-video-editor',
+            'description': 'Hybrid role creating both static and video content for clients. Adobe Suite proficiency required.',
+            'match_reasons': ['Video Editing', 'Graphic Design'],
+            'salary': '$45,000 - $60,000'
+        },
+        {
+            'title': 'Motion Graphics Artist',
+            'company': 'Broadcast Network',
+            'location': 'Miami, FL (On-site)',
+            'posted': '2 days ago',
+            'url': 'https://www.linkedin.com/jobs/view/motion-graphics-artist',
+            'description': 'Create on-air graphics and promos for TV network. Broadcast experience preferred.',
+            'match_reasons': ['Motion Graphics', 'Broadcast & TV'],
+            'salary': '$55,000 - $75,000'
+        },
+        {
+            'title': 'Junior Film Editor',
+            'company': 'Independent Film Studio',
+            'location': 'Austin, TX (On-site)',
+            'posted': '1 week ago',
+            'url': 'https://www.linkedin.com/jobs/view/junior-film-editor',
+            'description': 'Edit indie films and documentaries. DaVinci Resolve and color grading skills valued.',
+            'match_reasons': ['Film & Cinema', 'Documentary'],
+            'salary': '$40,000 - $55,000'
+        },
+        {
+            'title': 'Freelance Animator',
+            'company': 'Game Development Studio',
+            'location': 'Remote',
+            'posted': '3 days ago',
+            'url': 'https://www.linkedin.com/jobs/view/freelance-animator',
+            'description': 'Create character animations for mobile games. 2D animation and rigging skills needed.',
+            'match_reasons': ['Animation', 'Game Cinematics'],
+            'salary': '$30 - $50/hour'
+        },
+        {
+            'title': 'Video Production Assistant',
+            'company': 'Corporate Media Team',
+            'location': 'Seattle, WA (On-site)',
+            'posted': '6 days ago',
+            'url': 'https://www.linkedin.com/jobs/view/video-production-assistant',
+            'description': 'Support video production for corporate communications. Great entry-level opportunity.',
+            'match_reasons': ['Corporate Video', 'Video Production'],
+            'salary': '$35,000 - $45,000'
+        },
+    ]
+
+    # Score jobs based on keyword matches
+    scored_jobs = []
+    for job in all_jobs:
+        score = 0
+        for keyword in keywords:
+            keyword_lower = keyword.lower()
+            if keyword_lower in job['title'].lower():
+                score += 3
+            if keyword_lower in job['description'].lower():
+                score += 2
+            for reason in job['match_reasons']:
+                if keyword_lower in reason.lower():
+                    score += 2
+        scored_jobs.append((score, job))
+
+    # Sort by score and return top 10
+    scored_jobs.sort(key=lambda x: x[0], reverse=True)
+    return [job for _, job in scored_jobs[:10]]
+
+
+def render_jobs_page():
+    """Render the jobs recommendation page."""
+    init_course_tracking()
+    init_mentor_reviews()
+
+    st.markdown("""
+        <div class="main-header">
+            <h1>Job Recommendations</h1>
+            <p>Based on your skills, completed courses, and mentor feedback</p>
+        </div>
+    """, unsafe_allow_html=True)
+
+    # Get search keywords
+    keywords = get_job_search_keywords()
+
+    # Show what we're searching for
+    user_profile = st.session_state.get('user_profile', {})
+    career_path = st.session_state.get('career_path', {})
+    completed = st.session_state.get('completed_courses', {})
+
+    with st.expander("Your Job Search Profile", expanded=False):
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.markdown(f"**Interests:** {', '.join(user_profile.get('interests', ['Not set']))}")
+            st.markdown(f"**Experience Level:** {user_profile.get('experience_level', 'Not set')}")
+            if completed:
+                st.markdown(f"**Completed Courses:** {len(completed)}")
+
+        with col2:
+            if career_path.get('target_roles'):
+                st.markdown(f"**Target Roles:** {', '.join(career_path['target_roles'])}")
+            if career_path.get('skills_to_develop'):
+                skills = [s['skill'] for s in career_path['skills_to_develop'][:3]]
+                st.markdown(f"**Developing Skills:** {', '.join(skills)}")
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # Job search
+    st.markdown("<h3 class='section-header'>Recommended Jobs</h3>", unsafe_allow_html=True)
+
+    with st.spinner("Searching for jobs matching your profile..."):
+        jobs = get_sample_jobs(keywords)
+
+    if jobs:
+        st.markdown(
+            f'<p style="color: {COLORS["secondary"]}; margin-bottom: 1rem;">Found {len(jobs)} jobs matching your profile</p>',
+            unsafe_allow_html=True
+        )
+
+        for idx, job in enumerate(jobs):
+            # Match reasons as tags
+            match_tags = " ".join([
+                f'<span style="background-color: {COLORS["light_accent"]}; color: {COLORS["mid_accent"]}; padding: 0.2rem 0.5rem; border-radius: 3px; font-size: 0.75rem; margin-right: 0.25rem;">{reason}</span>'
+                for reason in job.get('match_reasons', [])
+            ])
+
+            html = f'''<div style="background-color: {COLORS["white"]}; padding: 1.25rem; border-radius: 10px; margin-bottom: 1rem; border-left: 4px solid {COLORS["primary_dark"]}; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
+                    <div>
+                        <h4 style="color: {COLORS["primary_dark"]}; margin: 0 0 0.25rem 0;">
+                            <a href="{job["url"]}" target="_blank" style="color: {COLORS["primary_dark"]}; text-decoration: none;">{job["title"]}</a>
+                        </h4>
+                        <p style="color: {COLORS["text_dark"]}; margin: 0; font-weight: 500;">{job["company"]}</p>
+                    </div>
+                    <span style="background-color: {COLORS["light_accent"]}; color: {COLORS["primary_dark"]}; padding: 0.25rem 0.75rem; border-radius: 15px; font-size: 0.8rem;">{job["posted"]}</span>
+                </div>
+                <p style="color: {COLORS["secondary"]}; margin: 0.25rem 0; font-size: 0.9rem;">{job["location"]} | {job.get("salary", "Salary not listed")}</p>
+                <p style="color: {COLORS["text_dark"]}; margin: 0.75rem 0; font-size: 0.9rem;">{job["description"]}</p>
+                <div style="margin-top: 0.5rem;">
+                    <span style="color: {COLORS["secondary"]}; font-size: 0.8rem;">Matches: </span>{match_tags}
+                </div>
+            </div>'''
+            st.markdown(html, unsafe_allow_html=True)
+
+            col1, col2, col3 = st.columns([2, 1, 1])
+            with col3:
+                st.link_button("Apply Now", job["url"], use_container_width=True)
+
+            st.markdown("<br>", unsafe_allow_html=True)
+    else:
+        st.markdown(
+            '<div class="info-box"><p>No jobs found matching your profile. Try completing more courses or updating your skills.</p></div>',
+            unsafe_allow_html=True
+        )
+
+    # Tips section
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("<h3 class='section-header'>Job Search Tips</h3>", unsafe_allow_html=True)
+
+    tips = [
+        "Complete more courses to strengthen your profile and unlock more opportunities",
+        "Build a portfolio showcasing your best work from completed projects",
+        "Follow your mentor's career path suggestions to develop in-demand skills",
+        "Network with industry professionals through LinkedIn and local meetups",
+        "Apply to internships to gain real-world experience"
+    ]
+
+    for tip in tips:
+        st.markdown(f'''
+            <div style="background-color: {COLORS["light_accent"]}; padding: 0.75rem; border-radius: 5px; margin-bottom: 0.5rem; display: flex; align-items: center;">
+                <span style="color: {COLORS["primary_dark"]}; margin-right: 0.75rem;">&#10003;</span>
+                <span style="color: {COLORS["text_dark"]};">{tip}</span>
+            </div>
+        ''', unsafe_allow_html=True)
+
+    # Navigation buttons
+    st.markdown("<br>", unsafe_allow_html=True)
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        if st.button("Back to Recommendations", use_container_width=True):
+            st.session_state.current_page = "main"
+            st.rerun()
+    with col2:
+        pass
+    with col3:
+        if st.button("View My Profile", use_container_width=True):
+            st.session_state.current_page = "profile"
+            st.rerun()
+
 
 def main():
     """Main application entry point."""
@@ -1703,6 +2100,8 @@ def main():
     # Page routing
     if st.session_state.current_page == "profile":
         render_profile_page()
+    elif st.session_state.current_page == "jobs":
+        render_jobs_page()
     elif st.session_state.get('form_submitted', False):
         render_recommendations(client)
     else:
