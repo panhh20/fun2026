@@ -246,22 +246,9 @@ def apply_global_styles():
             border-color: {COLORS['primary_dark']};
         }}
 
-        /* Sidebar profile button styling */
-        [data-testid="stSidebar"] button[kind="secondary"]:first-of-type {{
-            background-color: {COLORS['secondary']} !important;
-            color: {COLORS['white']} !important;
-            border-radius: 50% !important;
-            width: 80px !important;
-            height: 80px !important;
-            font-size: 2rem !important;
-            margin: 0 auto !important;
-            display: block !important;
-            border: none !important;
-            padding: 0 !important;
-        }}
-        [data-testid="stSidebar"] button[kind="secondary"]:first-of-type:hover {{
-            transform: scale(1.05);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        /* Sidebar button styling */
+        [data-testid="stSidebar"] .stButton button {{
+            font-size: 0.85rem !important;
         }}
 
         /* Profile page styles */
@@ -361,38 +348,64 @@ def render_sidebar():
 
         # User profile picture placeholder and info - clickable
         username = get_current_user()
-
-        # Profile button (clicking navigates to profile page)
-        if st.button(
-            f"{username[0].upper() if username else 'U'}",
-            key="profile_btn",
-            help="Click to view your profile",
-            use_container_width=False
-        ):
-            st.session_state.current_page = "profile"
-            st.rerun()
-
         tracked_count = len(st.session_state.get('tracked_courses', {}))
         completed_count = len(st.session_state.get('completed_courses', {}))
+        initial = username[0].upper() if username else 'U'
 
+        # Centered profile avatar (clickable)
         st.markdown(f"""
-            <p style='color: {COLORS["light_accent"]}; margin: 0; text-align: center;'>
-                Logged in as: <strong>{username}</strong>
-            </p>
-            <p style='color: {COLORS["light_accent"]}; margin: 0.5rem 0 0 0; text-align: center; font-size: 0.8rem;'>
-                {tracked_count} in progress | {completed_count} completed
-            </p>
-            <p style='color: {COLORS["secondary"]}; margin: 0.25rem 0 0 0; text-align: center; font-size: 0.75rem;'>
-                Click avatar to view profile
-            </p>
+            <div style='text-align: center; margin-bottom: 1rem;'>
+                <div id="profile-avatar" style='
+                    width: 120px;
+                    height: 120px;
+                    border-radius: 50%;
+                    background-color: {COLORS["secondary"]};
+                    margin: 0 auto 0.75rem auto;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 3rem;
+                    color: {COLORS["white"]};
+                    cursor: pointer;
+                    transition: transform 0.2s ease, box-shadow 0.2s ease;
+                '>
+                    {initial}
+                </div>
+                <p style='color: {COLORS["light_accent"]}; margin: 0; text-align: center;'>
+                    Logged in as: <strong>{username}</strong>
+                </p>
+                <p style='color: {COLORS["light_accent"]}; margin: 0.5rem 0 0 0; text-align: center; font-size: 0.8rem;'>
+                    {tracked_count} in progress | {completed_count} completed
+                </p>
+            </div>
         """, unsafe_allow_html=True)
 
-        st.markdown("---")
+        # Profile button (small, below the avatar info)
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            if st.button("View Profile", key="profile_btn", use_container_width=True):
+                st.session_state.current_page = "profile"
+                st.rerun()
 
-        # Logout button
-        if st.button("Logout", use_container_width=True):
-            logout()
-            st.rerun()
+        # Spacer to push logout to bottom
+        st.markdown("<div style='flex-grow: 1; min-height: 100px;'></div>", unsafe_allow_html=True)
+
+        # Logout button - smaller, at bottom
+        st.markdown(f"""
+            <style>
+            [data-testid="stSidebar"] > div:first-child {{
+                display: flex;
+                flex-direction: column;
+                height: 100vh;
+            }}
+            </style>
+        """, unsafe_allow_html=True)
+
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            if st.button("Logout", key="logout_btn", use_container_width=True):
+                logout()
+                st.rerun()
 
 
 def render_skills_form():
@@ -695,8 +708,7 @@ def render_mock_recommendations(result):
                 else:
                     if st.button("Add to Tracker", key=f"add_course_{idx}", use_container_width=True):
                         if add_course_to_tracker(course):
-                            st.success(f"Added '{course['name'][:30]}...' to your tracker!")
-                            st.rerun()
+                            st.toast(f"Added '{course['name'][:30]}...' to your tracker!")
     else:
         # Fallback to mock courses if no Coursera courses found
         courses = result.get('courses', [])
@@ -740,8 +752,7 @@ def render_mock_recommendations(result):
                 else:
                     if st.button("Add to Tracker", key=f"add_mock_{idx}", use_container_width=True):
                         if add_course_to_tracker(mock_course):
-                            st.success(f"Added '{course['name'][:30]}...' to your tracker!")
-                            st.rerun()
+                            st.toast(f"Added '{course['name'][:30]}...' to your tracker!")
 
     # Mentors section
     st.markdown("<h3 class='section-header'>Recommended Mentors</h3>", unsafe_allow_html=True)
@@ -821,17 +832,79 @@ def mark_course_complete(course_id, certificate_data=None):
 
 
 def render_profile_page():
-    """Render the user profile page with course tracker."""
+    """Render the user profile page with course tracker and mentor reviews."""
     init_course_tracking()
+    init_mentor_reviews()
     username = get_current_user()
 
     st.markdown(f"""
         <div class="main-header">
             <h1>{username}'s Profile</h1>
-            <p>Track your learning journey and achievements</p>
+            <p>Track your learning journey and mentor feedback</p>
         </div>
     """, unsafe_allow_html=True)
 
+    # Create tabs for Courses and Mentor Reviews
+    tab1, tab2 = st.tabs(["My Courses", "Mentor Reviews"])
+
+    with tab1:
+        render_courses_tab()
+
+    with tab2:
+        render_mentor_reviews_tab()
+
+    # Back button
+    st.markdown("<br>", unsafe_allow_html=True)
+    _, col2, _ = st.columns([1, 2, 1])
+    with col2:
+        if st.button("Back to Recommendations", use_container_width=True):
+            st.session_state.current_page = "main"
+            st.rerun()
+
+
+def init_mentor_reviews():
+    """Initialize mentor reviews in session state."""
+    if 'mentor_reviews' not in st.session_state:
+        # Sample mentor reviews for demo
+        st.session_state.mentor_reviews = [
+            {
+                'id': '1',
+                'date': '2026-01-20',
+                'mentor_name': 'Sarah Chen',
+                'review_type': 'Weekly Review',
+                'strengths': 'Excellent understanding of color theory and composition. Shows great creativity in project concepts.',
+                'areas_for_improvement': 'Time management could be improved. Sometimes rushes final touches.',
+                'action_plan': '1. Create a project timeline template\n2. Schedule buffer time for revisions\n3. Practice breaking down large projects into smaller milestones',
+                'additional_notes': 'Great progress this week! Keep up the enthusiasm.',
+                'positive_recognition': 'Outstanding work on the motion graphics assignment - very professional quality!'
+            },
+            {
+                'id': '2',
+                'date': '2026-01-15',
+                'mentor_name': 'David Park',
+                'review_type': 'Assignment Review',
+                'strengths': 'Strong technical skills in After Effects. Good attention to keyframe timing.',
+                'areas_for_improvement': 'Could explore more creative transitions. Try experimenting with 3D camera movements.',
+                'action_plan': '1. Watch tutorials on advanced camera techniques\n2. Recreate 2 professional motion pieces for practice',
+                'additional_notes': 'Ready to move on to more advanced projects.',
+                'positive_recognition': None
+            },
+            {
+                'id': '3',
+                'date': '2026-01-10',
+                'mentor_name': 'Sarah Chen',
+                'review_type': 'Behavioral Note',
+                'strengths': 'Very collaborative and supportive of other students. Takes feedback well.',
+                'areas_for_improvement': 'Could speak up more in group critiques - your insights are valuable!',
+                'action_plan': '1. Prepare at least one question or comment before each critique session',
+                'additional_notes': None,
+                'positive_recognition': 'Helped a fellow student troubleshoot their render issues - great teamwork!'
+            }
+        ]
+
+
+def render_courses_tab():
+    """Render the courses tracking tab."""
     # Profile stats
     col1, col2, col3 = st.columns(3)
 
@@ -884,13 +957,15 @@ def render_profile_page():
                 # Certificate upload section
                 col1, col2 = st.columns([3, 1])
                 with col1:
+                    cert_key = f"cert_{hash(course_id) % 10000}"
                     uploaded_file = st.file_uploader(
                         f"Upload certificate for {course['name'][:30]}...",
                         type=['pdf', 'png', 'jpg', 'jpeg'],
-                        key=f"cert_{course_id[:20]}"
+                        key=cert_key
                     )
                 with col2:
-                    if st.button("Mark Complete", key=f"complete_{course_id[:20]}", use_container_width=True):
+                    complete_key = f"complete_{hash(course_id) % 10000}"
+                    if st.button("Mark Complete", key=complete_key, use_container_width=True):
                         cert_data = None
                         if uploaded_file:
                             cert_data = {
@@ -899,7 +974,7 @@ def render_profile_page():
                                 'size': uploaded_file.size
                             }
                         mark_course_complete(course_id, cert_data)
-                        st.success(f"Congratulations! '{course['name']}' marked as complete!")
+                        st.toast(f"Congratulations! '{course['name']}' marked as complete!")
                         st.rerun()
 
                 st.markdown("<hr style='border: none; border-top: 1px solid #e5e6de; margin: 1rem 0;'>", unsafe_allow_html=True)
@@ -941,13 +1016,124 @@ def render_profile_page():
             </div>
         """, unsafe_allow_html=True)
 
-    # Back button
-    st.markdown("<br>", unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([1, 2, 1])
+
+def render_mentor_reviews_tab():
+    """Render the mentor reviews tab showing feedback from mentors."""
+    st.markdown("<h3 class='section-header'>Mentor Feedback</h3>", unsafe_allow_html=True)
+
+    reviews = st.session_state.get('mentor_reviews', [])
+
+    if not reviews:
+        st.markdown("""
+            <div class="info-box">
+                <p>No mentor reviews yet. Your mentor's feedback will appear here after your sessions.</p>
+            </div>
+        """, unsafe_allow_html=True)
+        return
+
+    # Summary stats
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown(f"""
+            <div class="stats-card">
+                <div class="stats-number">{len(reviews)}</div>
+                <div class="stats-label">Total Reviews</div>
+            </div>
+        """, unsafe_allow_html=True)
+
     with col2:
-        if st.button("Back to Recommendations", use_container_width=True):
-            st.session_state.current_page = "main"
-            st.rerun()
+        positive_count = sum(1 for r in reviews if r.get('positive_recognition'))
+        st.markdown(f"""
+            <div class="stats-card">
+                <div class="stats-number">{positive_count}</div>
+                <div class="stats-label">Recognitions</div>
+            </div>
+        """, unsafe_allow_html=True)
+
+    with col3:
+        mentors = set(r.get('mentor_name', '') for r in reviews)
+        st.markdown(f"""
+            <div class="stats-card">
+                <div class="stats-number">{len(mentors)}</div>
+                <div class="stats-label">Mentors</div>
+            </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # Filter options
+    review_types = ['All'] + list(set(r.get('review_type', '') for r in reviews))
+    selected_type = st.selectbox("Filter by Review Type", review_types)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # Display reviews
+    filtered_reviews = reviews if selected_type == 'All' else [r for r in reviews if r.get('review_type') == selected_type]
+
+    for review in filtered_reviews:
+        review_type = review.get('review_type', 'Review')
+        review_date = review.get('date', '')
+        mentor_name = review.get('mentor_name', 'Mentor')
+
+        # Review type badge color
+        type_colors = {
+            'Weekly Review': COLORS['primary_dark'],
+            'Assignment Review': COLORS['accent'],
+            'Behavioral Note': COLORS['mid_accent'],
+            'Academic Concern': '#dc3545',
+            'Positive Recognition': '#28a745'
+        }
+        badge_color = type_colors.get(review_type, COLORS['secondary'])
+
+        with st.expander(f"{review_type} - {review_date} (by {mentor_name})", expanded=False):
+            # Positive Recognition (if any)
+            if review.get('positive_recognition'):
+                st.markdown(f"""
+                    <div style="background-color: #d4edda; padding: 1rem; border-radius: 5px; margin-bottom: 1rem; border-left: 4px solid #28a745;">
+                        <strong style="color: #155724;">Positive Recognition</strong>
+                        <p style="color: #155724; margin: 0.5rem 0 0 0;">{review['positive_recognition']}</p>
+                    </div>
+                """, unsafe_allow_html=True)
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                # Strengths
+                if review.get('strengths'):
+                    st.markdown(f"""
+                        <div style="background-color: {COLORS['light_accent']}; padding: 1rem; border-radius: 5px; margin-bottom: 1rem;">
+                            <strong style="color: {COLORS['primary_dark']};">Your Strengths</strong>
+                            <p style="color: {COLORS['text_dark']}; margin: 0.5rem 0 0 0;">{review['strengths']}</p>
+                        </div>
+                    """, unsafe_allow_html=True)
+
+            with col2:
+                # Areas for Improvement
+                if review.get('areas_for_improvement'):
+                    st.markdown(f"""
+                        <div style="background-color: #fff3cd; padding: 1rem; border-radius: 5px; margin-bottom: 1rem; border-left: 4px solid #ffc107;">
+                            <strong style="color: #856404;">Areas for Improvement</strong>
+                            <p style="color: {COLORS['text_dark']}; margin: 0.5rem 0 0 0;">{review['areas_for_improvement']}</p>
+                        </div>
+                    """, unsafe_allow_html=True)
+
+            # Action Plan
+            if review.get('action_plan'):
+                st.markdown(f"""
+                    <div style="background-color: {COLORS['white']}; padding: 1rem; border-radius: 5px; margin-bottom: 1rem; border: 1px solid {COLORS['secondary']};">
+                        <strong style="color: {COLORS['primary_dark']};">Action Plan / Next Steps</strong>
+                        <p style="color: {COLORS['text_dark']}; margin: 0.5rem 0 0 0; white-space: pre-line;">{review['action_plan']}</p>
+                    </div>
+                """, unsafe_allow_html=True)
+
+            # Additional Notes
+            if review.get('additional_notes'):
+                st.markdown(f"""
+                    <div style="background-color: {COLORS['background']}; padding: 1rem; border-radius: 5px;">
+                        <strong style="color: {COLORS['secondary']};">Additional Notes</strong>
+                        <p style="color: {COLORS['text_dark']}; margin: 0.5rem 0 0 0;">{review['additional_notes']}</p>
+                    </div>
+                """, unsafe_allow_html=True)
 
 
 def main():
