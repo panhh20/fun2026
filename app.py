@@ -827,21 +827,22 @@ def mark_course_complete(course_id, certificate_data=None):
 
 
 def render_profile_page():
-    """Render the user profile page with course tracker, attendance, and mentor reviews."""
+    """Render the user profile page with course tracker, attendance, resources, and mentor reviews."""
     init_course_tracking()
     init_attendance_tracking()
+    init_resources_tracking()
     init_mentor_reviews()
     username = get_current_user()
 
     st.markdown(f"""
         <div class="main-header">
             <h1>{username}'s Profile</h1>
-            <p>Track your learning journey, attendance, and mentor feedback</p>
+            <p>Track your learning journey, resources, and mentor feedback</p>
         </div>
     """, unsafe_allow_html=True)
 
-    # Create tabs for Courses, Attendance, and Mentor Reviews
-    tab1, tab2, tab3 = st.tabs(["My Courses", "Attendance", "Mentor Reviews"])
+    # Create tabs for Courses, Attendance, Resources, and Mentor Reviews
+    tab1, tab2, tab3, tab4 = st.tabs(["My Courses", "Attendance", "Devices & Licenses", "Mentor Reviews"])
 
     with tab1:
         render_courses_tab()
@@ -850,6 +851,9 @@ def render_profile_page():
         render_attendance_tab()
 
     with tab3:
+        render_resources_tab()
+
+    with tab4:
         render_mentor_reviews_tab()
 
     # Back button
@@ -859,6 +863,304 @@ def render_profile_page():
         if st.button("Back to Recommendations", use_container_width=True):
             st.session_state.current_page = "main"
             st.rerun()
+
+
+def init_resources_tracking():
+    """Initialize devices and licenses tracking in session state."""
+    if 'resources' not in st.session_state:
+        st.session_state.resources = {
+            'licenses': [
+                {
+                    'id': 'lic_1',
+                    'name': 'Coursera Plus',
+                    'type': 'Learning Platform',
+                    'status': 'active',
+                    'assigned_date': '2025-09-01',
+                    'expiry_date': '2026-08-31',
+                    'notes': 'Full access to all Coursera courses'
+                },
+                {
+                    'id': 'lic_2',
+                    'name': 'Adobe Creative Cloud',
+                    'type': 'Software',
+                    'status': 'active',
+                    'assigned_date': '2025-09-01',
+                    'expiry_date': '2026-08-31',
+                    'notes': 'Includes Premiere Pro, After Effects, Photoshop, Illustrator'
+                },
+                {
+                    'id': 'lic_3',
+                    'name': 'Blender',
+                    'type': 'Software',
+                    'status': 'active',
+                    'assigned_date': '2025-09-01',
+                    'expiry_date': None,
+                    'notes': 'Free and open source - no license required'
+                },
+            ],
+            'devices': [
+                {
+                    'id': 'dev_1',
+                    'name': 'MacBook Pro 14"',
+                    'type': 'Laptop',
+                    'status': 'assigned',
+                    'assigned_date': '2025-09-01',
+                    'serial_number': 'MBP-2025-001',
+                    'notes': 'Primary workstation for coursework'
+                },
+                {
+                    'id': 'dev_2',
+                    'name': 'Wacom Intuos Pro',
+                    'type': 'Drawing Tablet',
+                    'status': 'assigned',
+                    'assigned_date': '2025-10-15',
+                    'serial_number': 'WIP-2025-042',
+                    'notes': 'For digital illustration and animation'
+                },
+            ],
+            'requests': [
+                {
+                    'id': 'req_1',
+                    'request_type': 'license',
+                    'item_name': 'DaVinci Resolve Studio',
+                    'status': 'pending',
+                    'submitted_date': '2026-01-15',
+                    'justification': 'Need advanced color grading features for my film project. The free version lacks noise reduction and HDR tools.',
+                    'admin_notes': ''
+                },
+            ]
+        }
+
+
+def render_resources_tab():
+    """Render the devices and licenses tracking tab."""
+    resources = st.session_state.get('resources', {})
+    licenses = resources.get('licenses', [])
+    devices = resources.get('devices', [])
+    requests = resources.get('requests', [])
+
+    # Summary stats
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        active_licenses = sum(1 for l in licenses if l['status'] == 'active')
+        st.markdown(
+            f'<div class="stats-card"><div class="stats-number">{active_licenses}</div><div class="stats-label">Active Licenses</div></div>',
+            unsafe_allow_html=True
+        )
+
+    with col2:
+        assigned_devices = sum(1 for d in devices if d['status'] == 'assigned')
+        st.markdown(
+            f'<div class="stats-card"><div class="stats-number">{assigned_devices}</div><div class="stats-label">Assigned Devices</div></div>',
+            unsafe_allow_html=True
+        )
+
+    with col3:
+        pending_requests = sum(1 for r in requests if r['status'] == 'pending')
+        st.markdown(
+            f'<div class="stats-card"><div class="stats-number">{pending_requests}</div><div class="stats-label">Pending Requests</div></div>',
+            unsafe_allow_html=True
+        )
+
+    with col4:
+        total_resources = len(licenses) + len(devices)
+        st.markdown(
+            f'<div class="stats-card"><div class="stats-number">{total_resources}</div><div class="stats-label">Total Resources</div></div>',
+            unsafe_allow_html=True
+        )
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # Licenses Section
+    st.markdown("<h3 class='section-header'>Software Licenses</h3>", unsafe_allow_html=True)
+
+    if licenses:
+        for lic in licenses:
+            status = lic['status']
+            if status == 'active':
+                status_color = "#28a745"
+                status_bg = "#d4edda"
+                status_text = "Active"
+            elif status == 'expired':
+                status_color = COLORS['mid_accent']
+                status_bg = COLORS['light_accent']
+                status_text = "Expired"
+            else:
+                status_color = COLORS['secondary']
+                status_bg = COLORS['light_accent']
+                status_text = status.capitalize()
+
+            expiry_text = f"Expires: {lic['expiry_date']}" if lic.get('expiry_date') else "No expiration"
+
+            html = f'''<div style="background-color: {COLORS["white"]}; padding: 1rem; border-radius: 5px; margin-bottom: 0.75rem; border-left: 4px solid {status_color};">
+                <div style="display: flex; justify-content: space-between; align-items: start;">
+                    <div>
+                        <strong style="color: {COLORS["primary_dark"]}; font-size: 1.1rem;">{lic["name"]}</strong>
+                        <span style="background-color: {COLORS["light_accent"]}; color: {COLORS["mid_accent"]}; padding: 0.2rem 0.5rem; border-radius: 3px; font-size: 0.75rem; margin-left: 0.5rem;">{lic["type"]}</span>
+                    </div>
+                    <div style="background-color: {status_bg}; padding: 0.25rem 0.75rem; border-radius: 15px;">
+                        <span style="color: {status_color}; font-weight: 500; font-size: 0.85rem;">{status_text}</span>
+                    </div>
+                </div>
+                <p style="color: {COLORS["text_dark"]}; margin: 0.5rem 0 0.25rem 0; font-size: 0.9rem;">{lic.get("notes", "")}</p>
+                <p style="color: {COLORS["secondary"]}; margin: 0; font-size: 0.8rem;">Assigned: {lic["assigned_date"]} | {expiry_text}</p>
+            </div>'''
+            st.markdown(html, unsafe_allow_html=True)
+    else:
+        st.markdown(
+            f'<div class="info-box"><p>No licenses assigned yet.</p></div>',
+            unsafe_allow_html=True
+        )
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # Devices Section
+    st.markdown("<h3 class='section-header'>Devices & Equipment</h3>", unsafe_allow_html=True)
+
+    if devices:
+        for dev in devices:
+            status = dev['status']
+            if status == 'assigned':
+                status_color = "#28a745"
+                status_bg = "#d4edda"
+                status_text = "Assigned"
+            elif status == 'maintenance':
+                status_color = "#856404"
+                status_bg = "#fff3cd"
+                status_text = "In Maintenance"
+            else:
+                status_color = COLORS['secondary']
+                status_bg = COLORS['light_accent']
+                status_text = status.capitalize()
+
+            serial_text = f"S/N: {dev['serial_number']}" if dev.get('serial_number') else ""
+
+            html = f'''<div style="background-color: {COLORS["white"]}; padding: 1rem; border-radius: 5px; margin-bottom: 0.75rem; border-left: 4px solid {status_color};">
+                <div style="display: flex; justify-content: space-between; align-items: start;">
+                    <div>
+                        <strong style="color: {COLORS["primary_dark"]}; font-size: 1.1rem;">{dev["name"]}</strong>
+                        <span style="background-color: {COLORS["light_accent"]}; color: {COLORS["mid_accent"]}; padding: 0.2rem 0.5rem; border-radius: 3px; font-size: 0.75rem; margin-left: 0.5rem;">{dev["type"]}</span>
+                    </div>
+                    <div style="background-color: {status_bg}; padding: 0.25rem 0.75rem; border-radius: 15px;">
+                        <span style="color: {status_color}; font-weight: 500; font-size: 0.85rem;">{status_text}</span>
+                    </div>
+                </div>
+                <p style="color: {COLORS["text_dark"]}; margin: 0.5rem 0 0.25rem 0; font-size: 0.9rem;">{dev.get("notes", "")}</p>
+                <p style="color: {COLORS["secondary"]}; margin: 0; font-size: 0.8rem;">Assigned: {dev["assigned_date"]} | {serial_text}</p>
+            </div>'''
+            st.markdown(html, unsafe_allow_html=True)
+    else:
+        st.markdown(
+            f'<div class="info-box"><p>No devices assigned yet.</p></div>',
+            unsafe_allow_html=True
+        )
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # Pending Requests Section
+    if requests:
+        st.markdown("<h3 class='section-header'>My Requests</h3>", unsafe_allow_html=True)
+
+        for req in requests:
+            status = req['status']
+            if status == 'approved':
+                status_color = "#28a745"
+                status_bg = "#d4edda"
+                status_text = "Approved"
+            elif status == 'pending':
+                status_color = "#856404"
+                status_bg = "#fff3cd"
+                status_text = "Pending Review"
+            elif status == 'denied':
+                status_color = COLORS['mid_accent']
+                status_bg = COLORS['light_accent']
+                status_text = "Denied"
+            else:
+                status_color = COLORS['secondary']
+                status_bg = COLORS['light_accent']
+                status_text = status.capitalize()
+
+            req_type = "License" if req['request_type'] == 'license' else "Device"
+
+            html = f'''<div style="background-color: {COLORS["white"]}; padding: 1rem; border-radius: 5px; margin-bottom: 0.75rem; border-left: 4px solid {status_color};">
+                <div style="display: flex; justify-content: space-between; align-items: start;">
+                    <div>
+                        <strong style="color: {COLORS["primary_dark"]}; font-size: 1.1rem;">{req["item_name"]}</strong>
+                        <span style="background-color: {COLORS["light_accent"]}; color: {COLORS["mid_accent"]}; padding: 0.2rem 0.5rem; border-radius: 3px; font-size: 0.75rem; margin-left: 0.5rem;">{req_type} Request</span>
+                    </div>
+                    <div style="background-color: {status_bg}; padding: 0.25rem 0.75rem; border-radius: 15px;">
+                        <span style="color: {status_color}; font-weight: 500; font-size: 0.85rem;">{status_text}</span>
+                    </div>
+                </div>
+                <p style="color: {COLORS["text_dark"]}; margin: 0.5rem 0 0.25rem 0; font-size: 0.9rem;"><strong>Justification:</strong> {req["justification"]}</p>
+                <p style="color: {COLORS["secondary"]}; margin: 0; font-size: 0.8rem;">Submitted: {req["submitted_date"]}</p>
+            </div>'''
+            st.markdown(html, unsafe_allow_html=True)
+
+            if req.get('admin_notes'):
+                st.markdown(
+                    f'<div style="background-color: {COLORS["light_accent"]}; padding: 0.75rem; border-radius: 5px; margin-top: -0.5rem; margin-bottom: 0.75rem;"><strong style="color: {COLORS["primary_dark"]};">Admin Response:</strong> <span style="color: {COLORS["text_dark"]};">{req["admin_notes"]}</span></div>',
+                    unsafe_allow_html=True
+                )
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # Request Form
+    st.markdown("<h3 class='section-header'>Request New Resource</h3>", unsafe_allow_html=True)
+
+    with st.form("resource_request_form"):
+        col1, col2 = st.columns(2)
+
+        with col1:
+            request_type = st.selectbox(
+                "Request Type",
+                options=["license", "device"],
+                format_func=lambda x: "Software License" if x == "license" else "Device / Equipment"
+            )
+
+        with col2:
+            if request_type == "license":
+                item_name = st.text_input(
+                    "License Name",
+                    placeholder="e.g., DaVinci Resolve Studio, Maya, Houdini..."
+                )
+            else:
+                item_name = st.text_input(
+                    "Device Name",
+                    placeholder="e.g., Camera, Microphone, External SSD..."
+                )
+
+        justification = st.text_area(
+            "Justification",
+            placeholder="Please explain why you need this resource and how it will support your coursework or projects...",
+            height=100
+        )
+
+        related_course = st.text_input(
+            "Related Course or Project (optional)",
+            placeholder="e.g., Film Production course, Animation final project..."
+        )
+
+        submitted = st.form_submit_button("Submit Request", use_container_width=True)
+
+        if submitted:
+            if not item_name or not justification:
+                st.error("Please provide both the item name and justification.")
+            else:
+                # Add the request to session state
+                new_request = {
+                    'id': f"req_{len(requests) + 1}",
+                    'request_type': request_type,
+                    'item_name': item_name,
+                    'status': 'pending',
+                    'submitted_date': datetime.now().strftime("%Y-%m-%d"),
+                    'justification': justification + (f" (Related to: {related_course})" if related_course else ""),
+                    'admin_notes': ''
+                }
+                st.session_state.resources['requests'].append(new_request)
+                st.toast("Request submitted successfully!")
+                st.rerun()
 
 
 def init_attendance_tracking():
