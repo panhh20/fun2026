@@ -418,14 +418,24 @@ def render_sidebar():
                 height: 100vh;
             }}
             /* Style for View Profile and Playground buttons */
-            [data-testid="stSidebar"] button[kind="secondary"] {{
+            [data-testid="stSidebar"] button {{
                 background-color: {COLORS['light_accent']} !important;
-                color: #1a2610 !important;
+                color: {COLORS['primary_dark']} !important;
                 border: none !important;
                 font-weight: 600 !important;
             }}
-            [data-testid="stSidebar"] button[kind="secondary"]:hover {{
+            [data-testid="stSidebar"] button:hover {{
                 background-color: {COLORS['secondary']} !important;
+                color: {COLORS['white']} !important;
+            }}
+            [data-testid="stSidebar"] button p,
+            [data-testid="stSidebar"] button span,
+            [data-testid="stSidebar"] button div {{
+                color: {COLORS['primary_dark']} !important;
+            }}
+            [data-testid="stSidebar"] button:hover p,
+            [data-testid="stSidebar"] button:hover span,
+            [data-testid="stSidebar"] button:hover div {{
                 color: {COLORS['white']} !important;
             }}
             </style>
@@ -798,25 +808,25 @@ def render_mock_recommendations(result):
 
             # Tags
             tags_html = " ".join([
-                f'<span style="background-color: {COLORS["light_accent"]}; color: {COLORS["mid_accent"]}; padding: 0.15rem 0.4rem; border-radius: 3px; font-size: 0.7rem; margin-right: 0.25rem;">{tag}</span>'
+                f'<span style="background-color: {COLORS["light_accent"]}; color: {COLORS["mid_accent"]}; padding: 0.15rem 0.4rem; border-radius: 3px; font-size: 0.84rem; margin-right: 0.25rem;">{tag}</span>'
                 for tag in video.get("tags", [])[:3]
             ])
 
-            html = f'''<div style="background-color: {COLORS["white"]}; padding: 0.65rem 0.85rem; border-radius: 8px; margin-bottom: 0.5rem; border-left: 3px solid {COLORS["primary_dark"]}; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+            html = f'''<div style="background-color: {COLORS["white"]}; padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 0.5rem; border-left: 3px solid {COLORS["primary_dark"]}; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
                 <div style="display: flex; gap: 0.75rem; align-items: center;">
-                    <div style="flex-shrink: 0; width: 120px;">
+                    <div style="flex-shrink: 0; width: 130px;">
                         {video_image}
                     </div>
                     <div style="flex: 1; min-width: 0;">
-                        <h4 style="color: {COLORS["primary_dark"]}; margin: 0 0 0.15rem 0; font-size: 0.95rem;">
+                        <h4 style="color: {COLORS["primary_dark"]}; margin: 0 0 0.15rem 0; font-size: 1.1rem;">
                             <a href="{video["url"]}" target="_blank" style="color: {COLORS["primary_dark"]}; text-decoration: none;">{video["title"]}</a>
                         </h4>
-                        <p style="color: {COLORS["secondary"]}; margin: 0 0 0.15rem 0; font-size: 0.75rem;">{video["channel"]} | {video.get("duration", "")} | {video.get("views", "")}</p>
-                        <p style="color: {COLORS["text_dark"]}; margin: 0 0 0.25rem 0; font-size: 0.8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{video["description"]}</p>
+                        <p style="color: {COLORS["secondary"]}; margin: 0 0 0.15rem 0; font-size: 0.9rem;">{video["channel"]} | {video.get("duration", "")} | {video.get("views", "")}</p>
+                        <p style="color: {COLORS["text_dark"]}; margin: 0 0 0.25rem 0; font-size: 0.95rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{video["description"]}</p>
                         <div>{tags_html}</div>
                     </div>
                     <div style="flex-shrink: 0;">
-                        <a href="{video["url"]}" target="_blank" style="display: inline-block; background-color: {COLORS["primary_dark"]}; color: white; padding: 0.35rem 0.75rem; border-radius: 4px; text-decoration: none; font-size: 0.8rem;">Watch</a>
+                        <a href="{video["url"]}" target="_blank" style="display: inline-block; background-color: {COLORS["primary_dark"]}; color: white; padding: 0.4rem 0.85rem; border-radius: 4px; text-decoration: none; font-size: 0.95rem;">Watch</a>
                     </div>
                 </div>
             </div>'''

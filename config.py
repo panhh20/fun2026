@@ -15,8 +15,8 @@ COLORS = {
 # Demo credentials
 DEMO_CREDENTIALS = {
     "demo": "demo123",
-    "admin": "admin123",
-    "user": "user123",
+    "Student 1": "demo123",
+    "Student 2": "demo123",
 }
 
 # Skills categories - Media, Animation & Film focused
