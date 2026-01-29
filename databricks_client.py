@@ -182,6 +182,218 @@ Format your response clearly with sections for Courses, Mentors, and Learning Pa
                 "recommendations": None
             }
 
+    def get_youtube_recommendations(self, user_profile: dict) -> dict:
+        """
+        Get YouTube video recommendations from Databricks vector database.
+
+        Args:
+            user_profile: Dictionary containing user skills, experience, and goals
+
+        Returns:
+            Dictionary with YouTube video recommendations or error information
+        """
+        if not self.is_configured():
+            return {
+                "success": False,
+                "error": "Databricks client not configured.",
+                "videos": None
+            }
+
+        # Build query from user profile
+        interests = user_profile.get("interests", [])
+        skills_text = user_profile.get("skills_text", "")
+        query = " ".join(interests) + " " + skills_text
+
+        # Build the API URL for vector search endpoint
+        # Adjust endpoint name as needed for your YouTube vector database
+        youtube_endpoint = os.environ.get("DATABRICKS_YOUTUBE_ENDPOINT", self.endpoint_name)
+        api_url = f"{self.workspace_url}/serving-endpoints/{youtube_endpoint}/invocations"
+
+        headers = {
+            "Authorization": f"Bearer {self.token}",
+            "Content-Type": "application/json"
+        }
+
+        # Payload for vector search - adjust based on your endpoint configuration
+        payload = {
+            "messages": [
+                {
+                    "role": "user",
+                    "content": f"Find the top 5 YouTube tutorial videos for someone interested in: {query}. Return video title, channel name, URL, and brief description for each."
+                }
+            ],
+            "max_tokens": 1500,
+            "temperature": 0.5
+        }
+
+        try:
+            response = requests.post(
+                api_url,
+                headers=headers,
+                json=payload,
+                timeout=60
+            )
+
+            if response.status_code == 200:
+                result = response.json()
+                if "choices" in result and len(result["choices"]) > 0:
+                    content = result["choices"][0].get("message", {}).get("content", "")
+                    return {
+                        "success": True,
+                        "error": None,
+                        "videos": content,
+                        "raw_response": result
+                    }
+                else:
+                    return {
+                        "success": True,
+                        "error": None,
+                        "videos": str(result),
+                        "raw_response": result
+                    }
+            else:
+                return {
+                    "success": False,
+                    "error": f"API Error: {response.status_code} - {response.text}",
+                    "videos": None
+                }
+
+        except requests.exceptions.RequestException as e:
+            return {
+                "success": False,
+                "error": f"Connection error: {str(e)}",
+                "videos": None
+            }
+
+
+def get_mock_youtube_videos(user_profile: dict) -> list:
+    """
+    Generate mock YouTube video recommendations based on user profile.
+
+    Args:
+        user_profile: Dictionary containing user skills, experience, and goals
+
+    Returns:
+        List of YouTube video dictionaries
+    """
+    interests = user_profile.get("interests", [])
+    skills_text = user_profile.get("skills_text", "")
+
+    # Sample YouTube videos mapped to interests
+    all_videos = [
+        {
+            "title": "After Effects Tutorial: Complete Motion Graphics Course",
+            "channel": "Ben Marriott",
+            "url": "https://www.youtube.com/watch?v=motion-graphics-101",
+            "duration": "2:45:30",
+            "views": "1.2M views",
+            "description": "Learn motion graphics from scratch with practical projects and techniques.",
+            "tags": ["Motion Graphics", "After Effects", "Animation"]
+        },
+        {
+            "title": "Cinematography Masterclass - Camera Movement & Composition",
+            "channel": "StudioBinder",
+            "url": "https://www.youtube.com/watch?v=cinematography-101",
+            "duration": "58:20",
+            "views": "890K views",
+            "description": "Master the art of cinematography with professional camera techniques.",
+            "tags": ["Film & Cinema", "Cinematography", "Documentary"]
+        },
+        {
+            "title": "Complete Blender 3D Animation Course for Beginners",
+            "channel": "Blender Guru",
+            "url": "https://www.youtube.com/watch?v=blender-animation",
+            "duration": "3:12:45",
+            "views": "2.1M views",
+            "description": "Learn 3D animation in Blender from absolute beginner to intermediate.",
+            "tags": ["Animation", "3D Animation", "Blender"]
+        },
+        {
+            "title": "VFX Compositing in Nuke - Beginner to Pro",
+            "channel": "ActionVFX",
+            "url": "https://www.youtube.com/watch?v=nuke-compositing",
+            "duration": "1:45:00",
+            "views": "456K views",
+            "description": "Professional VFX compositing techniques used in Hollywood films.",
+            "tags": ["Visual Effects", "Compositing", "VFX"]
+        },
+        {
+            "title": "DaVinci Resolve Color Grading - Complete Tutorial",
+            "channel": "Casey Faris",
+            "url": "https://www.youtube.com/watch?v=davinci-color",
+            "duration": "1:23:15",
+            "views": "1.5M views",
+            "description": "Master color grading and color correction in DaVinci Resolve.",
+            "tags": ["Film & Cinema", "Color Grading", "Video Editing"]
+        },
+        {
+            "title": "YouTube Video Editing Tips for Content Creators",
+            "channel": "Peter McKinnon",
+            "url": "https://www.youtube.com/watch?v=youtube-editing",
+            "duration": "18:42",
+            "views": "3.2M views",
+            "description": "Pro tips for editing engaging social media and YouTube content.",
+            "tags": ["Social Media Content", "Video Editing", "Content Creation"]
+        },
+        {
+            "title": "Character Animation Principles - 12 Principles Explained",
+            "channel": "Animator Island",
+            "url": "https://www.youtube.com/watch?v=12-principles",
+            "duration": "45:30",
+            "views": "780K views",
+            "description": "Deep dive into the 12 principles of animation with examples.",
+            "tags": ["Animation", "Character Animation", "2D Animation"]
+        },
+        {
+            "title": "Music Video Production - Behind the Scenes",
+            "channel": "Film Riot",
+            "url": "https://www.youtube.com/watch?v=music-video-bts",
+            "duration": "22:15",
+            "views": "560K views",
+            "description": "Learn how to produce professional music videos on any budget.",
+            "tags": ["Music Videos", "Film & Cinema", "Video Production"]
+        },
+        {
+            "title": "Game Cinematics - Creating Cutscenes in Unreal Engine",
+            "channel": "Unreal Sensei",
+            "url": "https://www.youtube.com/watch?v=game-cinematics",
+            "duration": "1:10:00",
+            "views": "340K views",
+            "description": "Create stunning game cinematics using Unreal Engine's Sequencer.",
+            "tags": ["Game Cinematics", "Animation", "3D Animation"]
+        },
+        {
+            "title": "Documentary Filmmaking - Storytelling Techniques",
+            "channel": "D4Darious",
+            "url": "https://www.youtube.com/watch?v=documentary-tips",
+            "duration": "28:45",
+            "views": "420K views",
+            "description": "Essential storytelling and interview techniques for documentaries.",
+            "tags": ["Documentary", "Film & Cinema", "Storytelling"]
+        },
+    ]
+
+    # Score videos based on user interests
+    scored_videos = []
+    for video in all_videos:
+        score = 0
+        for interest in interests:
+            if interest in video["tags"]:
+                score += 3
+            if interest.lower() in video["title"].lower():
+                score += 2
+            if interest.lower() in video["description"].lower():
+                score += 1
+        # Also check skills
+        for tag in video["tags"]:
+            if tag.lower() in skills_text.lower():
+                score += 2
+        scored_videos.append((score, video))
+
+    # Sort by score and return top 5
+    scored_videos.sort(key=lambda x: x[0], reverse=True)
+    return [video for _, video in scored_videos[:5]]
+
 
 def get_mock_recommendations(user_profile: dict) -> dict:
     """

@@ -9,6 +9,7 @@ from auth import is_authenticated, render_login_page, logout, get_current_user
 from databricks_client import (
     DatabricksClient,
     get_mock_recommendations,
+    get_mock_youtube_videos,
     get_databricks_client
 )
 from coursera_client import get_courses_for_interests
@@ -16,6 +17,17 @@ from coursera_client import get_courses_for_interests
 def get_coursera_image_base64():
     """Get the Coursera background image as base64 for embedding in HTML."""
     image_path = os.path.join(os.path.dirname(__file__), "assets", "coursera_bg.png")
+    if os.path.exists(image_path):
+        with open(image_path, "rb") as f:
+            data = base64.b64encode(f.read()).decode()
+            return f"data:image/png;base64,{data}"
+    # Fallback to a simple placeholder color if image not found
+    return None
+
+
+def get_youtube_image_base64():
+    """Get the YouTube background image as base64 for embedding in HTML."""
+    image_path = os.path.join(os.path.dirname(__file__), "assets", "youtube_bg.png")
     if os.path.exists(image_path):
         with open(image_path, "rb") as f:
             data = base64.b64encode(f.read()).decode()
@@ -397,13 +409,23 @@ def render_sidebar():
         # Spacer to push logout to bottom
         st.markdown("<div style='flex-grow: 1; min-height: 100px;'></div>", unsafe_allow_html=True)
 
-        # Logout button - smaller, at bottom
+        # Button styling and layout
         st.markdown(f"""
             <style>
             [data-testid="stSidebar"] > div:first-child {{
                 display: flex;
                 flex-direction: column;
                 height: 100vh;
+            }}
+            /* Style for View Profile and Playground buttons */
+            [data-testid="stSidebar"] button[kind="secondary"] {{
+                background-color: {COLORS['light_accent']} !important;
+                color: {COLORS['primary_dark']} !important;
+                border: none !important;
+            }}
+            [data-testid="stSidebar"] button[kind="secondary"]:hover {{
+                background-color: {COLORS['secondary']} !important;
+                color: {COLORS['white']} !important;
             }}
             </style>
         """, unsafe_allow_html=True)
@@ -758,7 +780,54 @@ def render_mock_recommendations(result):
                         if add_course_to_tracker(mock_course):
                             st.toast("Course added to your tracker!")
 
+    # YouTube Videos section
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("<h3 class='section-header'>Recommended YouTube Tutorials</h3>", unsafe_allow_html=True)
+
+    youtube_img = get_youtube_image_base64()
+    youtube_videos = get_mock_youtube_videos(user_profile)
+
+    if youtube_videos:
+        for idx, video in enumerate(youtube_videos):
+            # Use YouTube background image
+            if youtube_img:
+                video_image = f'<img src="{youtube_img}" class="course-image" alt="YouTube Video">'
+            else:
+                video_image = f'<div class="course-image-placeholder" style="background-color: #c4302b;">&#9658;</div>'
+
+            # Tags
+            tags_html = " ".join([
+                f'<span style="background-color: {COLORS["light_accent"]}; color: {COLORS["mid_accent"]}; padding: 0.15rem 0.4rem; border-radius: 3px; font-size: 0.7rem; margin-right: 0.25rem;">{tag}</span>'
+                for tag in video.get("tags", [])[:3]
+            ])
+
+            html = f'''<div style="background-color: {COLORS["white"]}; padding: 1rem; border-radius: 10px; margin-bottom: 0.75rem; border-left: 4px solid #c4302b; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <div style="display: flex; gap: 1rem;">
+                    <div style="flex-shrink: 0; width: 180px;">
+                        {video_image}
+                    </div>
+                    <div style="flex: 1;">
+                        <h4 style="color: {COLORS["primary_dark"]}; margin: 0 0 0.25rem 0;">
+                            <a href="{video["url"]}" target="_blank" style="color: {COLORS["primary_dark"]}; text-decoration: none;">{video["title"]}</a>
+                        </h4>
+                        <p style="color: {COLORS["secondary"]}; margin: 0 0 0.25rem 0; font-size: 0.85rem;">{video["channel"]} | {video.get("duration", "")} | {video.get("views", "")}</p>
+                        <p style="color: {COLORS["text_dark"]}; margin: 0 0 0.5rem 0; font-size: 0.9rem;">{video["description"]}</p>
+                        <div>{tags_html}</div>
+                    </div>
+                    <div style="flex-shrink: 0;">
+                        <a href="{video["url"]}" target="_blank" style="display: inline-block; background-color: #c4302b; color: white; padding: 0.5rem 1rem; border-radius: 5px; text-decoration: none; font-size: 0.85rem;">Watch</a>
+                    </div>
+                </div>
+            </div>'''
+            st.markdown(html, unsafe_allow_html=True)
+    else:
+        st.markdown(
+            f'<div class="info-box"><p>No YouTube recommendations found for your interests.</p></div>',
+            unsafe_allow_html=True
+        )
+
     # Mentors section
+    st.markdown("<br>", unsafe_allow_html=True)
     st.markdown("<h3 class='section-header'>Recommended Mentors</h3>", unsafe_allow_html=True)
 
     mentors = result.get('mentors', [])
