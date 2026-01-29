@@ -832,25 +832,29 @@ def mark_course_complete(course_id, certificate_data=None):
 
 
 def render_profile_page():
-    """Render the user profile page with course tracker and mentor reviews."""
+    """Render the user profile page with course tracker, attendance, and mentor reviews."""
     init_course_tracking()
+    init_attendance_tracking()
     init_mentor_reviews()
     username = get_current_user()
 
     st.markdown(f"""
         <div class="main-header">
             <h1>{username}'s Profile</h1>
-            <p>Track your learning journey and mentor feedback</p>
+            <p>Track your learning journey, attendance, and mentor feedback</p>
         </div>
     """, unsafe_allow_html=True)
 
-    # Create tabs for Courses and Mentor Reviews
-    tab1, tab2 = st.tabs(["My Courses", "Mentor Reviews"])
+    # Create tabs for Courses, Attendance, and Mentor Reviews
+    tab1, tab2, tab3 = st.tabs(["My Courses", "Attendance", "Mentor Reviews"])
 
     with tab1:
         render_courses_tab()
 
     with tab2:
+        render_attendance_tab()
+
+    with tab3:
         render_mentor_reviews_tab()
 
     # Back button
@@ -860,6 +864,221 @@ def render_profile_page():
         if st.button("Back to Recommendations", use_container_width=True):
             st.session_state.current_page = "main"
             st.rerun()
+
+
+def init_attendance_tracking():
+    """Initialize attendance tracking in session state."""
+    if 'attendance_records' not in st.session_state:
+        # Sample attendance data for demo
+        st.session_state.attendance_records = {
+            'weekly_classes': [
+                {'date': '2026-01-27', 'class_name': 'Animation Fundamentals', 'status': 'present', 'notes': ''},
+                {'date': '2026-01-20', 'class_name': 'Animation Fundamentals', 'status': 'present', 'notes': ''},
+                {'date': '2026-01-13', 'class_name': 'Animation Fundamentals', 'status': 'absent', 'notes': 'Sick - notified in advance'},
+                {'date': '2026-01-06', 'class_name': 'Animation Fundamentals', 'status': 'present', 'notes': ''},
+                {'date': '2025-12-30', 'class_name': 'Animation Fundamentals', 'status': 'present', 'notes': ''},
+                {'date': '2025-12-23', 'class_name': 'Animation Fundamentals', 'status': 'late', 'notes': 'Arrived 15 mins late'},
+                {'date': '2025-12-16', 'class_name': 'Animation Fundamentals', 'status': 'present', 'notes': ''},
+                {'date': '2025-12-09', 'class_name': 'Animation Fundamentals', 'status': 'present', 'notes': ''},
+            ],
+            'mentoring_sessions': [
+                {'date': '2026-01-25', 'mentor': 'Sarah Chen', 'status': 'present', 'duration': '45 min', 'notes': ''},
+                {'date': '2026-01-18', 'mentor': 'Sarah Chen', 'status': 'present', 'duration': '60 min', 'notes': ''},
+                {'date': '2026-01-11', 'mentor': 'David Park', 'status': 'present', 'duration': '45 min', 'notes': ''},
+                {'date': '2026-01-04', 'mentor': 'Sarah Chen', 'status': 'absent', 'duration': '0 min', 'notes': 'Rescheduled to next week'},
+                {'date': '2025-12-28', 'mentor': 'Sarah Chen', 'status': 'present', 'duration': '50 min', 'notes': ''},
+                {'date': '2025-12-21', 'mentor': 'David Park', 'status': 'present', 'duration': '45 min', 'notes': ''},
+            ]
+        }
+
+
+def render_attendance_tab():
+    """Render the attendance tracking tab."""
+    records = st.session_state.get('attendance_records', {})
+    weekly_classes = records.get('weekly_classes', [])
+    mentoring_sessions = records.get('mentoring_sessions', [])
+
+    # Calculate summary stats
+    total_weekly = len(weekly_classes)
+    weekly_present = sum(1 for c in weekly_classes if c['status'] == 'present')
+    weekly_late = sum(1 for c in weekly_classes if c['status'] == 'late')
+    weekly_absent = sum(1 for c in weekly_classes if c['status'] == 'absent')
+    weekly_rate = ((weekly_present + weekly_late) / total_weekly * 100) if total_weekly > 0 else 0
+
+    total_mentoring = len(mentoring_sessions)
+    mentoring_present = sum(1 for s in mentoring_sessions if s['status'] == 'present')
+    mentoring_absent = sum(1 for s in mentoring_sessions if s['status'] == 'absent')
+    mentoring_rate = (mentoring_present / total_mentoring * 100) if total_mentoring > 0 else 0
+
+    overall_total = total_weekly + total_mentoring
+    overall_attended = weekly_present + weekly_late + mentoring_present
+    overall_rate = (overall_attended / overall_total * 100) if overall_total > 0 else 0
+
+    # Overall Summary
+    st.markdown("<h3 class='section-header'>Attendance Summary</h3>", unsafe_allow_html=True)
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        rate_color = '#28a745' if overall_rate >= 80 else '#ffc107' if overall_rate >= 60 else '#dc3545'
+        st.markdown(f"""
+            <div class="stats-card">
+                <div class="stats-number" style="color: {rate_color};">{overall_rate:.0f}%</div>
+                <div class="stats-label">Overall Attendance</div>
+            </div>
+        """, unsafe_allow_html=True)
+
+    with col2:
+        st.markdown(f"""
+            <div class="stats-card">
+                <div class="stats-number">{overall_attended}</div>
+                <div class="stats-label">Sessions Attended</div>
+            </div>
+        """, unsafe_allow_html=True)
+
+    with col3:
+        st.markdown(f"""
+            <div class="stats-card">
+                <div class="stats-number">{weekly_absent + mentoring_absent}</div>
+                <div class="stats-label">Sessions Missed</div>
+            </div>
+        """, unsafe_allow_html=True)
+
+    with col4:
+        st.markdown(f"""
+            <div class="stats-card">
+                <div class="stats-number">{overall_total}</div>
+                <div class="stats-label">Total Sessions</div>
+            </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # Weekly Classes Section
+    st.markdown("<h3 class='section-header'>Weekly In-Person Classes</h3>", unsafe_allow_html=True)
+
+    # Weekly class stats
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown(f"""
+            <div style="background-color: #d4edda; padding: 0.75rem; border-radius: 5px; text-align: center;">
+                <strong style="color: #155724;">{weekly_present} Present</strong>
+            </div>
+        """, unsafe_allow_html=True)
+    with col2:
+        st.markdown(f"""
+            <div style="background-color: #fff3cd; padding: 0.75rem; border-radius: 5px; text-align: center;">
+                <strong style="color: #856404;">{weekly_late} Late</strong>
+            </div>
+        """, unsafe_allow_html=True)
+    with col3:
+        st.markdown(f"""
+            <div style="background-color: #f8d7da; padding: 0.75rem; border-radius: 5px; text-align: center;">
+                <strong style="color: #721c24;">{weekly_absent} Absent</strong>
+            </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # Weekly class details
+    if weekly_classes:
+        for record in weekly_classes:
+            status = record['status']
+            status_color = '#28a745' if status == 'present' else '#ffc107' if status == 'late' else '#dc3545'
+            status_bg = '#d4edda' if status == 'present' else '#fff3cd' if status == 'late' else '#f8d7da'
+            status_text = 'Present' if status == 'present' else 'Late' if status == 'late' else 'Absent'
+
+            notes_html = f"<span style='color: {COLORS['secondary']}; font-size: 0.85rem;'> - {record['notes']}</span>" if record.get('notes') else ""
+
+            st.markdown(f"""
+                <div style="display: flex; align-items: center; padding: 0.75rem; background-color: {COLORS['white']}; border-radius: 5px; margin-bottom: 0.5rem; border-left: 4px solid {status_color};">
+                    <div style="flex: 1;">
+                        <strong style="color: {COLORS['primary_dark']};">{record['date']}</strong>
+                        <span style="color: {COLORS['text_dark']}; margin-left: 1rem;">{record['class_name']}</span>
+                        {notes_html}
+                    </div>
+                    <div style="background-color: {status_bg}; padding: 0.25rem 0.75rem; border-radius: 15px;">
+                        <span style="color: {status_color}; font-weight: 500; font-size: 0.85rem;">{status_text}</span>
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # Mentoring Sessions Section
+    st.markdown("<h3 class='section-header'>Mentoring Sessions</h3>", unsafe_allow_html=True)
+
+    # Mentoring stats
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown(f"""
+            <div style="background-color: #d4edda; padding: 0.75rem; border-radius: 5px; text-align: center;">
+                <strong style="color: #155724;">{mentoring_present} Attended</strong>
+            </div>
+        """, unsafe_allow_html=True)
+    with col2:
+        st.markdown(f"""
+            <div style="background-color: #f8d7da; padding: 0.75rem; border-radius: 5px; text-align: center;">
+                <strong style="color: #721c24;">{mentoring_absent} Missed</strong>
+            </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # Mentoring session details
+    if mentoring_sessions:
+        for record in mentoring_sessions:
+            status = record['status']
+            status_color = '#28a745' if status == 'present' else '#dc3545'
+            status_bg = '#d4edda' if status == 'present' else '#f8d7da'
+            status_text = 'Attended' if status == 'present' else 'Missed'
+
+            duration_html = f"<span style='color: {COLORS['accent']};'>({record['duration']})</span>" if record.get('duration') and record['duration'] != '0 min' else ""
+            notes_html = f"<span style='color: {COLORS['secondary']}; font-size: 0.85rem;'> - {record['notes']}</span>" if record.get('notes') else ""
+
+            st.markdown(f"""
+                <div style="display: flex; align-items: center; padding: 0.75rem; background-color: {COLORS['white']}; border-radius: 5px; margin-bottom: 0.5rem; border-left: 4px solid {status_color};">
+                    <div style="flex: 1;">
+                        <strong style="color: {COLORS['primary_dark']};">{record['date']}</strong>
+                        <span style="color: {COLORS['text_dark']}; margin-left: 1rem;">with {record['mentor']}</span>
+                        {duration_html}
+                        {notes_html}
+                    </div>
+                    <div style="background-color: {status_bg}; padding: 0.25rem 0.75rem; border-radius: 15px;">
+                        <span style="color: {status_color}; font-weight: 500; font-size: 0.85rem;">{status_text}</span>
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
+
+    # Missed Classes Summary
+    missed_weekly = [c for c in weekly_classes if c['status'] == 'absent']
+    missed_mentoring = [s for s in mentoring_sessions if s['status'] == 'absent']
+
+    if missed_weekly or missed_mentoring:
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("<h3 class='section-header'>Missed Sessions Summary</h3>", unsafe_allow_html=True)
+
+        st.markdown(f"""
+            <div style="background-color: #f8d7da; padding: 1rem; border-radius: 5px; border-left: 4px solid #dc3545;">
+                <strong style="color: #721c24;">Attention Required</strong>
+                <p style="color: {COLORS['text_dark']}; margin: 0.5rem 0 0 0;">
+                    You have missed {len(missed_weekly)} weekly class(es) and {len(missed_mentoring)} mentoring session(s).
+                    Please reach out to your mentor if you need to discuss make-up options.
+                </p>
+            </div>
+        """, unsafe_allow_html=True)
+
+        if missed_weekly:
+            st.markdown("<br><strong>Missed Weekly Classes:</strong>", unsafe_allow_html=True)
+            for record in missed_weekly:
+                reason = f" - {record['notes']}" if record.get('notes') else ""
+                st.markdown(f"- {record['date']}: {record['class_name']}{reason}")
+
+        if missed_mentoring:
+            st.markdown("<br><strong>Missed Mentoring Sessions:</strong>", unsafe_allow_html=True)
+            for record in missed_mentoring:
+                reason = f" - {record['notes']}" if record.get('notes') else ""
+                st.markdown(f"- {record['date']}: Session with {record['mentor']}{reason}")
 
 
 def init_mentor_reviews():
